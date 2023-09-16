@@ -71,10 +71,10 @@ pipelines:
                   PACKAGE_SUFFIX="full-${GO_DEPENDENCY_LABEL_BOOTSTRAP_UPSTREAM}"
                   ## Busyboxy doesnt have --concatenate ... gocd sayd bash, but uses busybox ...
                   docker run -v `pwd`:/app/ -u $(id -u) -w /app/ debian tar --concatenate -f ./package/bootstrap-package.tar  ./package/package.tar
-                  aws s3 cp ./package/bootstrap-package.tar s3://continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                  aws s3 cp ./package/bootstrap-package.tar s3://micropython-continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
                 else
                   PACKAGE_SUFFIX="app"
-                  aws s3 cp ./package/package.tar s3://continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                  aws s3 cp ./package/package.tar s3://micropython-continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
                 fi
 
                 cat manifest-template.json | \
@@ -89,7 +89,7 @@ pipelines:
                   jq ".location.spot=\"desk\"" \
                   > manifest.json
 
-                aws s3 cp ./manifest.json s3://continuous-delivery/rpi-pico-w-01.json
+                aws s3 cp ./manifest.json s3://micropython-continuous-delivery/rpi-pico-w-01.json
 
       - wait-for-deploy:
           tasks:
