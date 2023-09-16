@@ -1,7 +1,7 @@
 pipelines:
   snacker-tracker-pico-scanner-build:
     group: snacker-tracker-pico-scanner
-    label_template: "0.1.${COUNT}-${git-home-automation-esp32-snacker-tracker-scanner[:8]}"
+    label_template: "0.1.${COUNT}-${git-snacker-tracker-pico-scanner[:8]}"
     lock_behavior: unlockWhenFinished
     timer:
       spec: "* * * * * ? *"
@@ -48,7 +48,7 @@ pipelines:
       bootstrap-upstream:
         pipeline: micropython-deployment-build
         stage: dummy-stage
-      git-snacker-tracker-snacker-tracker-scanner:
+      git-snacker-tracker-pico-scanner:
         plugin_configuration:
           id: git.fb
           version: 1.3.5
@@ -71,10 +71,10 @@ pipelines:
                   PACKAGE_SUFFIX="full-${GO_DEPENDENCY_LABEL_BOOTSTRAP_UPSTREAM}"
                   ## Busyboxy doesnt have --concatenate ... gocd sayd bash, but uses busybox ...
                   docker run -v `pwd`:/app/ -u $(id -u) -w /app/ debian tar --concatenate -f ./package/bootstrap-package.tar  ./package/package.tar
-                  aws s3 cp ./package/bootstrap-package.tar s3://continuous-delivery/esp32-snacker-tracker-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                  aws s3 cp ./package/bootstrap-package.tar s3://continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
                 else
                   PACKAGE_SUFFIX="app"
-                  aws s3 cp ./package/package.tar s3://continuous-delivery/esp32-snacker-tracker-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                  aws s3 cp ./package/package.tar s3://continuous-delivery/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
                 fi
 
                 cat manifest-template.json | \
