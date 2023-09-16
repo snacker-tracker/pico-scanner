@@ -1,0 +1,21 @@
+{
+  "location": {
+    "building": "lake-avenue",
+    "room": "office",
+    "spot": "desk"
+  },
+  "UART": {
+    "BAUD_RATE": 9600,
+    "DEVICE": 1,
+    "TX_PIN": 4,
+    "RX_PIN": 5,
+    "BITS": 8,
+    "PARITY": null,
+    "STOP": 1
+  },
+  "OAUTH": {
+    "token_url": "https://fscker-public-qa.eu.auth0.com/oauth/token",
+    "client_id": "FA42LhBt1gcHZ9nghaQUhV0v07WMCogr",
+    "audience": "snacker-tracker-reporter"
+  }
+}

@@ -1,0 +1,103 @@
+pipelines:
+  snacker-tracker-pico-scanner-build:
+    group: snacker-tracker-pico-scanner
+    label_template: "0.1.${COUNT}-${git-home-automation-esp32-snacker-tracker-scanner[:8]}"
+    lock_behavior: unlockWhenFinished
+    timer:
+      spec: "* * * * * ? *"
+      only_on_changes: yes
+    materials:
+      git-snacker-tracker-pico-scanner:
+        plugin_configuration:
+          id: git.fb
+          version: 1.3.5
+        options:
+          url: https://github.com/snacker-tracker/pico-scanner/
+          branchwhitelist: master
+        destination: ./
+
+    stages:
+      - build-package:
+          tasks:
+            - script: |
+                cd ./src/
+                tar cf ../package.tar ./
+          artifacts:
+            - build:
+                source: package.tar
+                destination: ./package/
+
+      - dummy-stage:
+          tasks:
+            - script: |
+                exit 0
+
+
+  snacker-tracker-pico-scanner-deploy-dev:
+    group: snacker-tracker-pico-scanner
+    label_template: "${upstream}"
+    locking: "on"
+    environment_variables:
+      AWS_ACCESS_KEY_ID: "AKIAUPNK22LGUTBXIGO6"
+    secure_variables:
+      AWS_SECRET_ACCESS_KEY: "AES:FVtPxSh8Bx85FD2nqCMkDg==:g5xbALo8VEHhasmwFOlUxQ2wAr+GbMlCStmOu08BaVrI6q7hU+IaYzZ+GwEcVAF4"
+    materials:
+      upstream:
+        pipeline: snacker-tracker-pico-scanner-build
+        stage: dummy-stage
+      bootstrap-upstream:
+        pipeline: deployment-build
+        stage: dummy-stage
+      git-snacker-tracker-snacker-tracker-scanner:
+        plugin_configuration:
+          id: git.fb
+          version: 1.3.5
+        options:
+          url: https://github.com/snacker-tracker/pico-scanner/
+          branchwhitelist: master
+        destination: ./
+
+    stages:
+      - deploy-chart:
+          tasks:
+            - fetch:
+                pipeline: snacker-tracker-pico-scanner-build
+                stage: build-package
+                job: build-package
+                source: package/
+                destination: ./
+            - script: |
+                if [[ "$GO_MATERIAL_BOOTSTRAP_UPSTREAM_HAS_CHANGED" = "true" ]]; then
+                  PACKAGE_SUFFIX="full-${GO_DEPENDENCY_LABEL_BOOTSTRAP_UPSTREAM}"
+                  ## Busyboxy doesnt have --concatenate ... gocd sayd bash, but uses busybox ...
+                  docker run -v `pwd`:/app/ -u $(id -u) -w /app/ debian tar --concatenate -f ./package/bootstrap-package.tar  ./package/package.tar
+                  aws s3 cp ./package/bootstrap-package.tar s3://continuous-delivery/esp32-snacker-tracker-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                else
+                  PACKAGE_SUFFIX="app"
+                  aws s3 cp ./package/package.tar s3://continuous-delivery/esp32-snacker-tracker-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar
+                fi
+
+                cat manifest-template.json | \
+                  jq ".version=\"${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}\"" | \
+                  jq ".package=\"snacker-tracker-pico-scanner\"" | \
+                  jq ".package_url=\"https://continuous-delivery.s3-ap-southeast-1.amazonaws.com/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar\"" \
+                    > versioned-manifest.json
+
+                cat versioned-manifest.json | \
+                  jq ".location.building=\"lake-avenue\"" | \
+                  jq ".location.room=\"office\"" | \
+                  jq ".location.spot=\"desk\"" \
+                  > manifest.json
+
+                aws s3 cp ./manifest.json s3://continuous-delivery/rpi-pico-w-01.json
+
+      - wait-for-deploy:
+          tasks:
+            - script: |
+                if [[ "$GO_MATERIAL_BOOTSTRAP_UPSTREAM_HAS_CHANGED" = "true" ]]; then
+                  PACKAGE_SUFFIX="full-${GO_DEPENDENCY_LABEL_BOOTSTRAP_UPSTREAM}"
+                else
+                  PACKAGE_SUFFIX="app"
+                fi
+
+                ## ./auto/wait-for-deploy ${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX} 4
