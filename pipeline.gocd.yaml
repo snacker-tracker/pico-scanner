@@ -38,9 +38,9 @@ pipelines:
     label_template: "${upstream}"
     locking: "on"
     environment_variables:
-      AWS_ACCESS_KEY_ID: "AKIAUPNK22LGUTBXIGO6"
+      AWS_ACCESS_KEY_ID: "AKIAUPNK22LG6KG6N7LC"
     secure_variables:
-      AWS_SECRET_ACCESS_KEY: "AES:FVtPxSh8Bx85FD2nqCMkDg==:g5xbALo8VEHhasmwFOlUxQ2wAr+GbMlCStmOu08BaVrI6q7hU+IaYzZ+GwEcVAF4"
+      AWS_SECRET_ACCESS_KEY: "AES:N2E8Es29ULyKcU0NiVKdkw==:aCxWbPkSwCcXAOgDhccTUQCFfN2QYYrPXdbg2ECCtCsitR/wL+MgCAmVSRap0je2"
     materials:
       upstream:
         pipeline: snacker-tracker-pico-scanner-build
