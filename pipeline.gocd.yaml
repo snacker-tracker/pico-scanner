@@ -46,7 +46,7 @@ pipelines:
         pipeline: snacker-tracker-pico-scanner-build
         stage: dummy-stage
       bootstrap-upstream:
-        pipeline: deployment-build
+        pipeline: micropython-deployment-build
         stage: dummy-stage
       git-snacker-tracker-snacker-tracker-scanner:
         plugin_configuration:
