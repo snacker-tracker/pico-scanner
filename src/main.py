@@ -160,3 +160,5 @@ uart.init(
 
 while True:
     the_loop(uart, time)
+
+    OTA.update()
