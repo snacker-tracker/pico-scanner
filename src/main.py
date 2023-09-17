@@ -124,7 +124,7 @@ def handle_wifi_configuration(configuration):
 def handle_code_scan(code):
     token = get_oauth_token()
 
-    response = post_code(value, token)
+    response = post_code(code, token)
     print(response.json())
 
 def the_loop(uart, time):
