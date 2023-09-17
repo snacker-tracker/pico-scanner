@@ -21,7 +21,7 @@ pipelines:
           tasks:
             - script: |
                 cd ./src/
-                tar cf ../package.tar ./
+                tar cfv ../package.tar ./
           artifacts:
             - build:
                 source: package.tar
@@ -88,6 +88,8 @@ pipelines:
                   jq ".location.room=\"office\"" | \
                   jq ".location.spot=\"desk\"" \
                   > manifest.json
+
+                cat manifest.json | jq .
 
                 aws s3 cp ./manifest.json s3://micropython-continuous-delivery/rpi-pico-w-01.json
 
