@@ -115,7 +115,17 @@ def validate_wifi_configuration(config):
     return True
 
 def save_wifi_configuration(config):
-    pass
+    current_config = ujson.load(open("device.json"))
+
+    print("Updating wifi from:", current_config['wifi'])
+
+    current_config['wifi']['ssid'] = config['S']
+    current_config['wifi']['password'] = config['P']
+
+    print("Updating wifi to:", current_config['wifi'])
+
+    with open("device.json", 'w') as fp:
+        fp.write(ujson.dumps(current_config))
 
 def handle_wifi_configuration(configuration):
     print("handling as WIFI configuration")
@@ -133,7 +143,8 @@ def the_loop(uart, time):
     if uart.any(): 
         try:
             value = uart.read().decode("utf-8").strip()
-            print(value)
+
+            print("Scanned: '" + value + "'")
 
             if is_wifi_configuration(value):
                 handle_wifi_configuration(value)
