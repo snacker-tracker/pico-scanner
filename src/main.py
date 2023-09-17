@@ -158,7 +158,10 @@ uart.init(
 )
 
 
+i = 0
 while True:
     the_loop(uart, time)
 
-    OTA.update()
+    if i % 1000 == 0:
+        OTA.update()
+        i = i + 1
