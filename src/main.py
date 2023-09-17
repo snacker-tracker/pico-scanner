@@ -144,7 +144,7 @@ def the_loop(uart, time):
         except OSError as e:
             print(e)
 
-    time.sleep_ms(50)
+    time.sleep_ms(1000)
 
 uart = UART(
     UART_DEVICE,
@@ -164,6 +164,8 @@ i = 0
 while True:
     the_loop(uart, time)
 
-    if i % 1000 == 0:
+    if i % 100 == 0:
         OTA.update()
-        i = i + 1
+        i = 0
+
+    i = i + 1
