@@ -2,6 +2,7 @@ import time
 import network
 import urequests as requests
 import ujson
+import sys
 from machine import Pin, UART
 
 
@@ -36,8 +37,10 @@ def get_oauth_token():
     print("getting token")
     response = requests.post(
         TOKEN_URL,
+        #".".join(map( str, list(sys.implementation.version)))
         headers = {
-            'content-type': 'application/json'
+            'content-type': 'application/json',
+            'user-agent': sys.platform + "/" + sys.implementation.name + "-" + ".".join(map( str, list(sys.implementation.version))) + "/" + manifest['package'] + "-" + manifest['version']
         },
 
         data = ujson.dumps({
@@ -65,7 +68,8 @@ def post_code(code, token):
             REPORTER_URL,
             headers = {
                 'content-type': 'application/json',
-                'authorization': "Bearer %s" % token
+                'authorization': "Bearer %s" % token,
+                'user-agent': sys.platform + "/" + sys.implementation.name + "-" + ".".join(map( str, list(sys.implementation.version))) + "/" + manifest['package'] + "-" + manifest['version']
             },
             data = ujson.dumps(post_data)
         )
