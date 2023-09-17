@@ -53,7 +53,7 @@ def cacheable(ttl = 60):
 
     return wrapper
 
-@cacheable(60)
+@cacheable(3600)
 def get_oauth_token():
     print("getting token")
     response = requests.post(
@@ -154,7 +154,7 @@ def save_wifi_configuration(config):
     machine.reset()
 
 def handle_wifi_configuration(configuration):
-    print("handling as WIFI configuration")
+    print("Handling as WIFI configuration")
     config = parse_wifi_configuration(configuration)
     validate_wifi_configuration(config)
     save_wifi_configuration(config)
