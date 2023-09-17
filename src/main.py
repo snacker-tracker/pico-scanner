@@ -32,7 +32,6 @@ SCANNER_LOCATION = ":".join([
     manifest.get('location', {}).get('spot', "desk"),
 ])
 
-
 def get_oauth_token():
     print("getting token")
     response = requests.post(
@@ -78,7 +77,6 @@ def post_code(code, token):
     except OSError as e:
         print(e)
         raise e
-
 
 is_wifi_configuration = lambda code: code.startswith("WIFI:")
 
