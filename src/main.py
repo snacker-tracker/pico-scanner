@@ -32,6 +32,28 @@ SCANNER_LOCATION = ":".join([
     manifest.get('location', {}).get('spot', "desk"),
 ])
 
+def cacheable(ttl = 60):
+    def wrapper(func):
+        cache = {True: {}}
+
+        def caching_function(*args):
+            now = time.time()
+            reasons = [
+                cache[True].get('value') is None,
+                cache[True].get('until', 0) < now
+            ]
+
+            if True in reasons:
+                cache[True]['value'] = func(*args)
+                cache[True]['until'] = time.time() + ttl
+
+            return cache[True]['value']
+
+        return caching_function
+
+    return wrapper
+
+@cacheable(60)
 def get_oauth_token():
     print("getting token")
     response = requests.post(
@@ -126,6 +148,10 @@ def save_wifi_configuration(config):
 
     with open("device.json", 'w') as fp:
         fp.write(ujson.dumps(current_config))
+        print("wrote config")
+
+    time.sleep(1)
+    machine.reset()
 
 def handle_wifi_configuration(configuration):
     print("handling as WIFI configuration")
