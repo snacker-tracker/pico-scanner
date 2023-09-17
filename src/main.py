@@ -121,6 +121,8 @@ def handle_wifi_configuration(configuration):
     validate_wifi_configuration(config)
     save_wifi_configuration(config)
 
+token = None
+
 def handle_code_scan(code):
     if token is None:
         token = get_oauth_token()
@@ -158,7 +160,6 @@ uart.init(
     stop=UART_STOP
 )
 
-token = None
 
 while True:
     the_loop(uart, time)
