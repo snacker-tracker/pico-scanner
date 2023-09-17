@@ -14,7 +14,7 @@ if manifest is None:
 UART_BAUD_RATE = manifest.get('UART', {}).get('BAUD_RATE', 9600)
 UART_DEVICE = manifest.get('UART', {}).get('DEVICE', 1)
 UART_RX_PIN = manifest.get('UART', {}).get('RX_PIN', 5)
-UART_TX_PIN = manifest.get('UART', {}).get('RX_PIN', 4)
+UART_TX_PIN = manifest.get('UART', {}).get('TX_PIN', 4)
 UART_BITS = manifest.get('UART', {}).get('BITS', 8)
 UART_PARITY = manifest.get('UART', {}).get('PARITY')
 UART_STOP = manifest.get('UART', {}).get('STOP', 1)
