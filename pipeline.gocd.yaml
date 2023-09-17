@@ -80,7 +80,7 @@ pipelines:
                 cat manifest-template.json | \
                   jq ".version=\"${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}\"" | \
                   jq ".package=\"snacker-tracker-pico-scanner\"" | \
-                  jq ".package_url=\"https://continuous-delivery.s3-ap-southeast-1.amazonaws.com/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar\"" \
+                  jq ".package_url=\"https://micropython-continuous-delivery.s3-ap-southeast-1.amazonaws.com/snacker-tracker-pico-scanner/${GO_PIPELINE_LABEL}-${PACKAGE_SUFFIX}.tar\"" \
                     > versioned-manifest.json
 
                 cat versioned-manifest.json | \
