@@ -11,18 +11,18 @@ if config is None:
 if manifest is None:
     manifest = {}
 
-UART_BAUD_RATE = config.get('UART', {}).get('BAUD_RATE', 9600)
-UART_DEVICE = config.get('UART', {}).get('DEVICE', 1)
-UART_RX_PIN = config.get('UART', {}).get('RX_PIN', 5)
-UART_TX_PIN = config.get('UART', {}).get('RX_PIN', 4)
-UART_BITS = config.get('UART', {}).get('BITS', 8)
-UART_PARITY = config.get('UART', {}).get('PARITY')
-UART_STOP = config.get('UART', {}).get('STOP', 1)
+UART_BAUD_RATE = manifest.get('UART', {}).get('BAUD_RATE', 9600)
+UART_DEVICE = manifest.get('UART', {}).get('DEVICE', 1)
+UART_RX_PIN = manifest.get('UART', {}).get('RX_PIN', 5)
+UART_TX_PIN = manifest.get('UART', {}).get('RX_PIN', 4)
+UART_BITS = manifest.get('UART', {}).get('BITS', 8)
+UART_PARITY = manifest.get('UART', {}).get('PARITY')
+UART_STOP = manifest.get('UART', {}).get('STOP', 1)
 
-TOKEN_URL = config.get('OAUTH', {}).get('token_url')
-CLIENT_ID = config.get('OAUTH', {}).get('client_id')
-AUDIENCE = config.get('OAUTH', {}).get('audience')
-CLIENT_SECRET = manifest.get('secrets', {}).get('CLIENT_SECRET')
+TOKEN_URL = manifest.get('OAUTH', {}).get('token_url')
+CLIENT_ID = manifest.get('OAUTH', {}).get('client_id')
+AUDIENCE = manifest.get('OAUTH', {}).get('audience')
+CLIENT_SECRET = config.get('secrets', {}).get('CLIENT_SECRET')
 
 REPORTER_URL = config.get('scanner', {}).get('url', "https://reporter.snacker-tracker.qa.k8s.fscker.org/v1/scans")
 SCANNER_LOCATION = ":".join([
