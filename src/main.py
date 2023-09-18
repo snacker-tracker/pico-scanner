@@ -214,14 +214,17 @@ def validate_wifi_configuration(config):
 def save_wifi_configuration(config):
     current_config = ujson.load(open("device.json"))
 
-    logger.debug("Current WIFI config: " + ujson.dump(current_config['wifi']))
+    logger.debug("Current WIFI config: " + ujson.dumps(current_config['wifi']))
 
     current_config['wifi']['ssid'] = config['S']
     current_config['wifi']['password'] = config['P']
 
+    current_config = ujson.dumps(current_config)
+    logger.debug("New config: " + current_config)
+
     with open("device.json", 'w') as fp:
-        fp.write(ujson.dumps(current_config))
-        logger.info("Wrote WIFI config: " + ujson.dump(current_config['wifi']))
+        fp.write(current_config)
+        logger.info("Updated whole config for wifi settings")
 
     time.sleep(1)
     machine.reset()
