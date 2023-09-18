@@ -25,14 +25,29 @@ CLIENT_ID = manifest.get('OAUTH', {}).get('client_id')
 AUDIENCE = manifest.get('OAUTH', {}).get('audience')
 CLIENT_SECRET = config.get('secrets', {}).get('CLIENT_SECRET')
 
-REPORTER_URL = config.get('scanner', {}).get('url', "https://reporter.snacker-tracker.qa.k8s.fscker.org/v1/scans")
+REPORTER_URL = config.get('scanner', {}).get(
+    'url', "https://reporter.snacker-tracker.qa.k8s.fscker.org"
+)
 SCANNER_LOCATION = ":".join([
     manifest.get('location', {}).get('building', "lake-avenue"),
     manifest.get('location', {}).get('room', "home"),
     manifest.get('location', {}).get('spot', "desk"),
 ])
 
-def cacheable(ttl = 60):
+USER_AGENT = "".join([
+    sys.platform,
+    "/",
+    sys.implementation.name,
+    "-",
+    ".".join(map(str, list(sys.implementation.version))),
+    "/",
+    manifest['package'],
+    "-",
+    manifest['version']
+])
+
+
+def cacheable(ttl=60):
     def wrapper(func):
         cache = {True: {}}
 
@@ -53,18 +68,17 @@ def cacheable(ttl = 60):
 
     return wrapper
 
+
 @cacheable(3600)
 def get_oauth_token():
     print("getting token")
     response = requests.post(
         TOKEN_URL,
-        #".".join(map( str, list(sys.implementation.version)))
-        headers = {
+        headers={
             'content-type': 'application/json',
-            'user-agent': sys.platform + "/" + sys.implementation.name + "-" + ".".join(map( str, list(sys.implementation.version))) + "/" + manifest['package'] + "-" + manifest['version']
+            'user-agent': USER_AGENT
         },
-
-        data = ujson.dumps({
+        data=ujson.dumps({
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
             "grant_type": "client_credentials",
@@ -86,13 +100,13 @@ def post_code(code, token):
     try:
         print("posting code")
         res = requests.post(
-            REPORTER_URL,
-            headers = {
+            REPORTER_URL + "/v1/scans",
+            headers={
                 'content-type': 'application/json',
                 'authorization': "Bearer %s" % token,
-                'user-agent': sys.platform + "/" + sys.implementation.name + "-" + ".".join(map( str, list(sys.implementation.version))) + "/" + manifest['package'] + "-" + manifest['version']
+                'user-agent': USER_AGENT
             },
-            data = ujson.dumps(post_data)
+            data=ujson.dumps(post_data)
         )
         print("posted")
         return res
@@ -100,7 +114,31 @@ def post_code(code, token):
         print(e)
         raise e
 
-is_wifi_configuration = lambda code: code.startswith("WIFI:")
+
+def get_scans():
+    return requests.get(
+        REPORTER_URL + "/v1/scans",
+        headers={
+            'user-agent': USER_AGENT
+        }
+    )
+
+
+def can_talk_to_reporter():
+    try:
+        print("checking if we can GET /v1/scans (eg, internet connected)")
+        response = get_scans().json()
+        print("Can GET /v1/scans")
+        print(response)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def is_wifi_configuration(code):
+    return code.startswith("WIFI:")
+
 
 def parse_wifi_configuration(configuration):
     # example: WIFI:T:WPA;S:MyNetwork;P:MyPassword;H:;;
@@ -124,17 +162,20 @@ def parse_wifi_configuration(configuration):
         )
     )
 
-def validate_wifi_configuration(config):
-    print(config)
 
+def validate_wifi_configuration(config):
     if 'T' in config and config['T'] in ["WPA", "WEP"]:
         if 'P' not in config:
-            raise RuntimeError("WIFI Passphrase must be supplied when T is not 'no Encryption'")
+            error = "WIFI Passphrase is missing"
+            raise RuntimeError(
+                error
+            )
 
     if 'S' not in config:
         raise RuntimeError("WIFI SSID must be supplied")
 
     return True
+
 
 def save_wifi_configuration(config):
     current_config = ujson.load(open("device.json"))
@@ -153,11 +194,13 @@ def save_wifi_configuration(config):
     time.sleep(1)
     machine.reset()
 
+
 def handle_wifi_configuration(configuration):
     print("Handling as WIFI configuration")
     config = parse_wifi_configuration(configuration)
     validate_wifi_configuration(config)
     save_wifi_configuration(config)
+
 
 def handle_code_scan(code):
     token = get_oauth_token()
@@ -165,8 +208,9 @@ def handle_code_scan(code):
     response = post_code(code, token)
     print(response.json())
 
+
 def the_loop(uart, time):
-    if uart.any(): 
+    if uart.any():
         try:
             value = uart.read().decode("utf-8").strip()
 
@@ -183,6 +227,7 @@ def the_loop(uart, time):
 
     time.sleep_ms(1000)
 
+
 uart = UART(
     UART_DEVICE,
     baudrate=UART_BAUD_RATE,
@@ -196,13 +241,19 @@ uart.init(
     stop=UART_STOP
 )
 
+can_talk_to_reporter()
 
 i = 0
 while True:
     the_loop(uart, time)
 
-    if i % 100 == 0:
-        OTA.update()
+    if i % 3600 == 0:
         i = 0
+        if not can_talk_to_reporter():
+            print("Stop and restart it again, maybe it'll fix internet issues")
+            machine.reset()
+
+    if i % 300 == 0:
+        OTA.update()
 
     i = i + 1
