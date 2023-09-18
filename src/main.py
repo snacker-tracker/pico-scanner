@@ -1,5 +1,4 @@
 import time
-import network
 import urequests as requests
 import ujson
 import sys
@@ -11,6 +10,35 @@ if config is None:
 
 if manifest is None:
     manifest = {}
+
+try:
+    import logging
+
+    logging.basicConfig(level=logging.INFO)
+
+except ImportError as error:
+    class LoggingStub:
+        def debug(self, msg):
+            print(msg)
+
+        def info(self, msg):
+            print(msg)
+
+        def warning(self, msg):
+            print(msg)
+
+        def error(self, msg):
+            print(msg)
+
+        def critical(self, msg):
+            print(msg)
+
+        def getLogger(self, context):
+            return self
+
+    logging = LoggingStub()
+
+logger = logging.getLogger("main")
 
 UART_BAUD_RATE = manifest.get('UART', {}).get('BAUD_RATE', 9600)
 UART_DEVICE = manifest.get('UART', {}).get('DEVICE', 1)
@@ -71,7 +99,7 @@ def cacheable(ttl=60):
 
 @cacheable(3600)
 def get_oauth_token():
-    print("getting token")
+    logger.debug("Getting token")
     response = requests.post(
         TOKEN_URL,
         headers={
@@ -88,6 +116,8 @@ def get_oauth_token():
 
     token = response.json()
 
+    logger.info("Got TOKEN")
+
     return token['access_token']
 
 
@@ -98,7 +128,7 @@ def post_code(code, token):
     }
 
     try:
-        print("posting code")
+        logger.debug("Posting CODE")
         res = requests.post(
             REPORTER_URL + "/v1/scans",
             headers={
@@ -108,10 +138,13 @@ def post_code(code, token):
             },
             data=ujson.dumps(post_data)
         )
-        print("posted")
+        scan = res.json()
+        logger.info("Posted CODE: " + scan['code'] + " - " + scan['id'] + "@" + scan['scanned_at'])
         return res
     except OSError as e:
         print(e)
+        logger.warning("Got exception in post_code")
+        logger.info(str(e))
         raise e
 
 
@@ -126,13 +159,14 @@ def get_scans():
 
 def can_talk_to_reporter():
     try:
-        print("checking if we can GET /v1/scans (eg, internet connected)")
-        response = get_scans().json()
-        print("Can GET /v1/scans")
-        print(response)
+        logger.debug("Checking if we can talk to the internet")
+        response = get_scans()
+        logger.info("Can do a GET /v1/scans")
+        logger.debug(ujson.dumps(response.json()))
         return True
     except Exception as e:
-        print(e)
+        logger.warning("Got exception when doing can_talk_to_reporter")
+        logger.info(str(e))
         return False
 
 
@@ -180,33 +214,34 @@ def validate_wifi_configuration(config):
 def save_wifi_configuration(config):
     current_config = ujson.load(open("device.json"))
 
-    print("Updating wifi from:", current_config['wifi'])
+    logger.debug("Current WIFI config: " + ujson.dump(current_config['wifi']))
 
     current_config['wifi']['ssid'] = config['S']
     current_config['wifi']['password'] = config['P']
 
-    print("Updating wifi to:", current_config['wifi'])
-
     with open("device.json", 'w') as fp:
         fp.write(ujson.dumps(current_config))
-        print("wrote config")
+        logger.info("Wrote WIFI config: " + ujson.dump(current_config['wifi']))
 
     time.sleep(1)
     machine.reset()
 
 
 def handle_wifi_configuration(configuration):
-    print("Handling as WIFI configuration")
+    logger.info("Handling as WIFI reconfiguration: " + str(configuration))
     config = parse_wifi_configuration(configuration)
     validate_wifi_configuration(config)
     save_wifi_configuration(config)
 
 
 def handle_code_scan(code):
+    logger.info("Handling as scanned code: " + str(code))
     token = get_oauth_token()
 
     response = post_code(code, token)
-    print(response.json())
+    logger.debug(ujson.dumps(response.json()))
+
+    return True
 
 
 def the_loop(uart, time):
@@ -214,7 +249,7 @@ def the_loop(uart, time):
         try:
             value = uart.read().decode("utf-8").strip()
 
-            print("Scanned: '" + value + "'")
+            logger.debug("Scanned: '" + value + "'")
 
             if is_wifi_configuration(value):
                 handle_wifi_configuration(value)
@@ -223,7 +258,8 @@ def the_loop(uart, time):
                 handle_code_scan(value)
 
         except OSError as e:
-            print(e)
+            logger.warn("Got an OSError in the_loop")
+            logger.info(str(e))
 
     time.sleep_ms(1000)
 
