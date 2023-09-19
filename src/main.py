@@ -40,6 +40,8 @@ except ImportError as error:
 
 logger = logging.getLogger("main")
 
+logger.info("Running application now")
+
 UART_BAUD_RATE = manifest.get('UART', {}).get('BAUD_RATE', 9600)
 UART_DEVICE = manifest.get('UART', {}).get('DEVICE', 1)
 UART_RX_PIN = manifest.get('UART', {}).get('RX_PIN', 5)
@@ -53,14 +55,19 @@ CLIENT_ID = manifest.get('OAUTH', {}).get('client_id')
 AUDIENCE = manifest.get('OAUTH', {}).get('audience')
 CLIENT_SECRET = config.get('secrets', {}).get('CLIENT_SECRET')
 
-REPORTER_URL = config.get('scanner', {}).get(
+REPORTER_URL = manifest.get('scanner', {}).get(
     'url', "https://reporter.snacker-tracker.qa.k8s.fscker.org"
 )
+
 SCANNER_LOCATION = ":".join([
     manifest.get('location', {}).get('building', "lake-avenue"),
     manifest.get('location', {}).get('room', "home"),
     manifest.get('location', {}).get('spot', "desk"),
 ])
+
+logger.info("Reporter URL: %s" % REPORTER_URL)
+logger.info("TOKEN URL: %s" % TOKEN_URL)
+logger.info("CLIENT_ID: %s" % CLIENT_ID)
 
 USER_AGENT = "".join([
     sys.platform,
@@ -180,21 +187,26 @@ def parse_wifi_configuration(configuration):
     # but clearly, we're being naive here
     # because who puts a ; in a wifi network name or password?!
     # Later ...
-    return dict(
-        list(
-            filter(
-                # drop empty config items
-                lambda x: len(x) > 1 and x[1] != '',
-                list(
-                    # Naive!
-                    map(
-                        lambda x: x.split(":"),
-                        configuration[5:].split(";")
+    try:
+        return dict(
+            list(
+                filter(
+                    # drop empty config items
+                    lambda x: len(x) > 1 and x[1] != '',
+                    list(
+                        # Naive!
+                        map(
+                            lambda x: x.split(":"),
+                            configuration[5:].split(";")
+                        )
                     )
                 )
             )
         )
-    )
+    except Exception as e:
+        logger.warn("Got exception in parse_wifi_config")
+        logger.info(str(e))
+        print(e)
 
 
 def validate_wifi_configuration(config):
@@ -217,16 +229,26 @@ def save_wifi_configuration(config):
     logger.debug("Current WIFI config: " + ujson.dumps(current_config['wifi']))
 
     current_config['wifi']['ssid'] = config['S']
-    current_config['wifi']['password'] = config['P']
+
+    if 'P' in config:
+        current_config['wifi']['password'] = config['P']
+    else:
+        del current_config['wifi']['password']
 
     current_config = ujson.dumps(current_config)
     logger.debug("New config: " + current_config)
 
     with open("device.json", 'w') as fp:
-        fp.write(current_config)
-        logger.info("Updated whole config for wifi settings")
+        wrote_bytes = fp.write(current_config)
+        logger.info("Updated whole config for wifi settings: %s bytes" % wrote_bytes)
+        fp.close()
 
-    time.sleep(1)
+    time.sleep(3)
+
+    with open("device.json") as read_fp:
+        logger.info("New configuration will follow...")
+        logger.info(ujson.load(read_fp))
+
     machine.reset()
 
 
@@ -280,19 +302,26 @@ uart.init(
     stop=UART_STOP
 )
 
+logger.info("UART created and configured")
+
 can_talk_to_reporter()
+
+logger.info("Going to listen for UART messages now ...")
 
 i = 0
 while True:
+    i = i + 1
+
     the_loop(uart, time)
 
     if i % 3600 == 0:
         i = 0
         if not can_talk_to_reporter():
             print("Stop and restart it again, maybe it'll fix internet issues")
+
+            time.sleep(10)
+
             machine.reset()
 
     if i % 300 == 0:
         OTA.update()
-
-    i = i + 1
