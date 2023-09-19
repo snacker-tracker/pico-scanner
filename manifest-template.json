@@ -17,5 +17,8 @@
     "token_url": "https://fscker-public-qa.eu.auth0.com/oauth/token",
     "client_id": "FA42LhBt1gcHZ9nghaQUhV0v07WMCogr",
     "audience": "snacker-tracker-reporter"
+  },
+  "scanner": {
+    "url": "https://snacker-tracker-api.qa.fscker.org"
   }
 }
