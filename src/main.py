@@ -8,65 +8,99 @@ import qr_config
 import ota
 
 
-_config = config_module.load_config()
-_manifest = config_module.load_manifest()
+class Periodic:
+    """Runs `action` at most once every `interval_ms`, tracking its own last-run time."""
 
-_uart_cfg = _manifest.get('hardware', {}).get('uart', {})
-_location = _manifest.get('scanner', {}).get('location', 'unknown:unknown:unknown')
+    def __init__(self, interval_ms, action):
+        self.interval_ms = interval_ms
+        self.action = action
+        self.last_run = time.ticks_ms()
 
-OTA_CHECK_INTERVAL_MS = _config.get('ota', {}).get('check_interval_seconds', 1800) * 1000
-HEARTBEAT_INTERVAL_MS = _config.get('heartbeat', {}).get('interval_seconds', 300) * 1000
+    def tick(self):
+        if time.ticks_diff(time.ticks_ms(), self.last_run) >= self.interval_ms:
+            self.last_run = time.ticks_ms()
+            self.action()
 
-uart = UART(
-    _uart_cfg.get('device', 1),
-    baudrate=_uart_cfg.get('baud_rate', 9600),
-    tx=Pin(_uart_cfg.get('tx_pin', 4)),
-    rx=Pin(_uart_cfg.get('rx_pin', 5))
-)
-uart.init(
-    bits=_uart_cfg.get('bits', 8),
-    parity=_uart_cfg.get('parity'),
-    stop=_uart_cfg.get('stop', 1)
-)
 
-print("Scanner ready at " + _location)
+def _make_uart(uart_cfg):
+    uart = UART(
+        uart_cfg.get('device', 1),
+        baudrate=uart_cfg.get('baud_rate', 9600),
+        tx=Pin(uart_cfg.get('tx_pin', 4)),
+        rx=Pin(uart_cfg.get('rx_pin', 5))
+    )
+    uart.init(
+        bits=uart_cfg.get('bits', 8),
+        parity=uart_cfg.get('parity'),
+        stop=uart_cfg.get('stop', 1)
+    )
+    return uart
 
-_boot_ticks = time.ticks_ms()
-_last_ota_check = _boot_ticks
-_last_heartbeat = _boot_ticks
 
-while True:
-    if uart.any():
-        try:
-            value = uart.read().decode('utf-8').strip()
-            if not value:
-                pass
-            elif qr_config.is_config_qr(value):
-                print("Config QR: " + value[:40])
-                qr_config.handle(value, _config)
-            else:
-                print("Scan: " + value)
-                scan = api.post_scan(value, _location, _config, _manifest)
-                print("  -> " + scan.get('id', '?') + " at " + scan.get('scanned_at', '?'))
-        except Exception as e:
-            print("Error: " + str(e))
+def _handle_uart(uart, config, manifest, location):
+    if not uart.any():
+        return
 
-    if time.ticks_diff(time.ticks_ms(), _last_ota_check) >= OTA_CHECK_INTERVAL_MS:
-        _last_ota_check = time.ticks_ms()
-        try:
-            if ota.check_and_apply(_config, _manifest):
-                machine.reset()
-        except Exception as e:
-            print("OTA check failed: " + str(e))
+    try:
+        value = uart.read().decode('utf-8').strip()
+        if not value:
+            return
 
-    if time.ticks_diff(time.ticks_ms(), _last_heartbeat) >= HEARTBEAT_INTERVAL_MS:
-        _last_heartbeat = time.ticks_ms()
-        try:
-            # ticks_ms wraps every ~12 days; ticks_diff handles one wrap correctly,
-            # so uptime stays accurate as long as reboots happen more often than that.
-            uptime_ms = time.ticks_diff(time.ticks_ms(), _boot_ticks)
-            api.send_heartbeat(_location, _config, _manifest, uptime_ms)
-        except Exception as e:
-            print("Heartbeat failed: " + str(e))
+        if qr_config.is_config_qr(value):
+            print("Config QR: " + value[:40])
+            qr_config.handle(value, config)
+        else:
+            print("Scan: " + value)
+            scan = api.post_scan(value, location, config, manifest)
+            print("  -> " + scan.get('id', '?') + " at " + scan.get('scanned_at', '?'))
+    except Exception as e:
+        print("Error: " + str(e))
 
-    time.sleep_ms(100)
+
+def _check_ota(config, manifest):
+    try:
+        if ota.check_and_apply(config, manifest):
+            machine.reset()
+    except Exception as e:
+        print("OTA check failed: " + str(e))
+
+
+def _send_heartbeat(config, manifest, location, boot_ticks):
+    try:
+        # ticks_ms wraps every ~12 days; ticks_diff handles one wrap correctly,
+        # so uptime stays accurate as long as reboots happen more often than that.
+        uptime_ms = time.ticks_diff(time.ticks_ms(), boot_ticks)
+        api.send_heartbeat(location, config, manifest, uptime_ms)
+    except Exception as e:
+        print("Heartbeat failed: " + str(e))
+
+
+def run():
+    config = config_module.load_config()
+    manifest = config_module.load_manifest()
+
+    uart_cfg = manifest.get('hardware', {}).get('uart', {})
+    location = manifest.get('scanner', {}).get('location', 'unknown:unknown:unknown')
+
+    uart = _make_uart(uart_cfg)
+    boot_ticks = time.ticks_ms()
+
+    ota_task = Periodic(
+        config.get('ota', {}).get('check_interval_seconds', 1800) * 1000,
+        lambda: _check_ota(config, manifest)
+    )
+    heartbeat_task = Periodic(
+        config.get('heartbeat', {}).get('interval_seconds', 300) * 1000,
+        lambda: _send_heartbeat(config, manifest, location, boot_ticks)
+    )
+
+    print("Scanner ready at " + location)
+
+    while True:
+        _handle_uart(uart, config, manifest, location)
+        ota_task.tick()
+        heartbeat_task.tick()
+        time.sleep_ms(100)
+
+
+run()
