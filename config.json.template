@@ -9,6 +9,7 @@
     "token": "your-api-token"
   },
   "ota": {
-    "channel": "stable"
+    "channel": "stable",
+    "check_interval_seconds": 1800
   }
 }
