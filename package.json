@@ -1,0 +1,11 @@
+{
+    "urls": [
+        ["main.py", "github:snacker-tracker/pico-scanner/src/main.py"],
+        ["boot.py", "github:snacker-tracker/pico-scanner/src/boot.py"],
+        ["api.py", "github:snacker-tracker/pico-scanner/src/api.py"],
+        ["config.py", "github:snacker-tracker/pico-scanner/src/config.py"],
+        ["ota.py", "github:snacker-tracker/pico-scanner/src/ota.py"],
+        ["qr_config.py", "github:snacker-tracker/pico-scanner/src/qr_config.py"]
+    ],
+    "version": "1.0"
+}

@@ -3,6 +3,7 @@ name: pipeline
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -22,3 +23,70 @@ jobs:
 
       - name: Run tests
         run: uv run pytest tests/ -v
+
+  # major.minor comes from pyproject.toml (bump it by hand for a real version
+  # bump); patch is this workflow run's run_number, so every build gets a
+  # unique, ever-increasing version without any manual input.
+  version:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.version.outputs.full }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version-file: ".python-version"
+
+      - name: Compute version
+        id: version
+        run: |
+          major_minor=$(uv version --short | cut -d. -f1,2)
+          echo "full=${major_minor}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  # Every push to main becomes an installable canary build: a GitHub
+  # prerelease that canary devices (config.json ota.channel = "canary")
+  # pick up on their next check, without touching the stable channel.
+  canary:
+    needs: version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish canary prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.full }}
+          name: Canary v${{ needs.version.outputs.full }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+
+  # Manually triggered promotion to an official release. Requires approval
+  # via the "prod" environment - configure required reviewers on it under
+  # repo Settings > Environments > prod (not settable from this file).
+  release:
+    needs: version
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.full }}
+          name: v${{ needs.version.outputs.full }}
+          target_commitish: ${{ github.sha }}
+          prerelease: false
