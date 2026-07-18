@@ -73,8 +73,7 @@ jobs:
   # via the "prod" environment - configure required reviewers on it under
   # repo Settings > Environments > prod (not settable from this file).
   release:
-    needs: version
-    if: github.event_name == 'workflow_dispatch'
+    needs: canary
     runs-on: ubuntu-latest
     environment: prod
     permissions:
