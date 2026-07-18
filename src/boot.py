@@ -2,20 +2,23 @@ import network
 import machine
 import time
 import ujson
+import log
+
+logger = log.getLogger("boot")
 
 
 def connect_wifi(config):
     wifi = config.get('wifi', {})
     ssid = wifi.get('ssid')
     if not ssid:
-        print("No WiFi config found")
+        logger.warning("No WiFi config found")
         return False
 
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
     if wlan.isconnected():
-        print("WiFi already connected: " + str(wlan.ifconfig()[0]))
+        logger.info("WiFi already connected: " + str(wlan.ifconfig()[0]))
         return True
 
     password = wifi.get('password', '')
@@ -23,11 +26,11 @@ def connect_wifi(config):
 
     for _ in range(20):
         if wlan.isconnected():
-            print("WiFi connected: " + str(wlan.ifconfig()[0]))
+            logger.info("WiFi connected: " + str(wlan.ifconfig()[0]))
             return True
         time.sleep(1)
 
-    print("WiFi connection timed out")
+    logger.warning("WiFi connection timed out")
     return False
 
 
@@ -35,7 +38,7 @@ try:
     with open('config.json') as f:
         _config = ujson.load(f)
 except OSError:
-    print("No config.json found — create one from config.json.template")
+    logger.warning("No config.json found — create one from config.json.template")
     _config = {}
 
 try:
@@ -47,8 +50,8 @@ except OSError:
 if connect_wifi(_config):
     try:
         import ota
-        print(dir(ota))
+        logger.debug(str(dir(ota)))
         if ota.check_and_apply(_config, _manifest):
             machine.reset()
     except Exception as e:
-        print("OTA check failed: " + str(e))
+        logger.error("OTA check failed: " + str(e))

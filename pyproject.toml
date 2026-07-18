@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pytest>=9.1.1",
+    "ruff>=0.15.22",
 ]
 
 [dependency-groups]
@@ -14,3 +15,8 @@ dev = [
     "requests",
     "requests-mock",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# These re-export stdlib names under MicroPython-only module names purely so other
+# code can `import ujson` etc.; the imports are never "used" within the file itself.
+"tests/stubs/*.py" = ["F401"]

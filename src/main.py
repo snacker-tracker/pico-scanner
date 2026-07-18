@@ -6,6 +6,9 @@ import config as config_module
 import api
 import qr_config
 import ota
+import log
+
+logger = log.getLogger("main")
 
 
 class Periodic:
@@ -47,14 +50,14 @@ def _handle_uart(uart, config, manifest, location):
             return
 
         if qr_config.is_config_qr(value):
-            print("Config QR: " + value[:40])
+            logger.info("Config QR: " + value[:40])
             qr_config.handle(value, config)
         else:
-            print("Scan: " + value)
+            logger.info("Scan: " + value)
             scan = api.post_scan(value, location, config, manifest)
-            print("  -> " + scan.get('id', '?') + " at " + scan.get('scanned_at', '?'))
+            logger.info("  -> " + scan.get('id', '?') + " at " + scan.get('scanned_at', '?'))
     except Exception as e:
-        print("Error: " + str(e))
+        logger.error("Error: " + str(e))
 
 
 def _check_ota(config, manifest):
@@ -62,7 +65,7 @@ def _check_ota(config, manifest):
         if ota.check_and_apply(config, manifest):
             machine.reset()
     except Exception as e:
-        print("OTA check failed: " + str(e))
+        logger.error("OTA check failed: " + str(e))
 
 
 def _send_heartbeat(config, manifest, location, boot_ticks):
@@ -72,7 +75,7 @@ def _send_heartbeat(config, manifest, location, boot_ticks):
         uptime_ms = time.ticks_diff(time.ticks_ms(), boot_ticks)
         api.send_heartbeat(location, config, manifest, uptime_ms)
     except Exception as e:
-        print("Heartbeat failed: " + str(e))
+        logger.error("Heartbeat failed: " + str(e))
 
 
 def run():
@@ -94,7 +97,7 @@ def run():
         lambda: _send_heartbeat(config, manifest, location, boot_ticks)
     )
 
-    print("Scanner ready at " + location)
+    logger.info("Scanner ready at " + location)
 
     while True:
         _handle_uart(uart, config, manifest, location)

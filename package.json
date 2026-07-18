@@ -5,6 +5,7 @@
         ["api.py", "github:snacker-tracker/pico-scanner/src/api.py"],
         ["config.py", "github:snacker-tracker/pico-scanner/src/config.py"],
         ["ota.py", "github:snacker-tracker/pico-scanner/src/ota.py"],
-        ["qr_config.py", "github:snacker-tracker/pico-scanner/src/qr_config.py"]
+        ["qr_config.py", "github:snacker-tracker/pico-scanner/src/qr_config.py"],
+        ["log.py", "github:snacker-tracker/pico-scanner/src/log.py"]
     ]
 }

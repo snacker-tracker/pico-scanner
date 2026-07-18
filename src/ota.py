@@ -1,5 +1,8 @@
 import urequests as requests
 import mip
+import log
+
+logger = log.getLogger("ota")
 
 GITHUB_REPO = "snacker-tracker/pico-scanner"
 GITHUB_RELEASES_API = "https://api.github.com/repos/" + GITHUB_REPO + "/releases"
@@ -9,7 +12,7 @@ GITHUB_RELEASES_API = "https://api.github.com/repos/" + GITHUB_REPO + "/releases
 STABLE_RELEASE_URL = GITHUB_RELEASES_API + "/latest"
 CANARY_RELEASE_URL = GITHUB_RELEASES_API
 
-print("importing OTA")
+logger.debug("importing OTA")
 
 
 def _release_url(config):
@@ -20,28 +23,28 @@ def _release_url(config):
 def check_and_apply(config, manifest):
     try:
         url = _release_url(config)
-        print("OTA URL: " + url)
+        logger.debug("OTA URL: " + url)
         res = requests.get(url, headers={'user-agent': 'pico-scanner-ota'})
         if res.status_code != 200:
-            print("OTA release fetch failed: " + str(res.status_code))
+            logger.warning("OTA release fetch failed: " + str(res.status_code))
             return False
         body = res.json()
         release = body[0] if isinstance(body, list) else body
         if not release:
-            print("OTA: no releases available")
+            logger.info("OTA: no releases available")
             return False
     except Exception as e:
-        print("OTA release error: " + str(e))
+        logger.error("OTA release error: " + str(e))
         return False
 
     current_version = manifest.get('version', '')
     remote_version = release.get('tag_name', '')
 
     if not remote_version or remote_version == current_version:
-        print("OTA: up to date (" + current_version + ")")
+        logger.info("OTA: up to date (" + current_version + ")")
         return False
 
-    print("OTA: updating " + current_version + " -> " + remote_version)
+    logger.info("OTA: updating " + current_version + " -> " + remote_version)
     return _apply(remote_version, manifest)
 
 
@@ -54,9 +57,9 @@ def _apply(remote_version, manifest):
         new_manifest['version'] = remote_version
         save_manifest(new_manifest)
 
-        print("OTA: applied " + remote_version)
+        logger.info("OTA: applied " + remote_version)
         return True
 
     except Exception as e:
-        print("OTA apply failed: " + str(e))
+        logger.error("OTA apply failed: " + str(e))
         return False

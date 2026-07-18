@@ -1,6 +1,9 @@
 import sys
 import urequests as requests
 import ujson
+import log
+
+logger = log.getLogger("api")
 
 
 def _user_agent(manifest):
@@ -23,8 +26,8 @@ def post_scan(code, location, config, manifest):
     data = ujson.dumps({'code': code, 'location': location})
     url = config['api']['url'] + "/scans"
 
-    print(url)
-    print(headers, data)
+    logger.debug(url)
+    logger.debug(str(headers) + " " + data)
 
     res = requests.post(
         url,
@@ -32,7 +35,7 @@ def post_scan(code, location, config, manifest):
         data=data
     )
 
-    print(res.status_code)
+    logger.debug(str(res.status_code))
 
     if res.status_code >= 400:
         raise RuntimeError("API error " + str(res.status_code))
