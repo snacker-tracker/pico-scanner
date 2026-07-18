@@ -1,0 +1,14 @@
+{
+  "device_name": "rpi-pico-w-01",
+  "wifi": {
+    "ssid": "your-network-name",
+    "password": "your-network-password"
+  },
+  "api": {
+    "url": "https://reporter.snacker-tracker.example.com",
+    "token": "your-api-token"
+  },
+  "ota": {
+    "channel": "stable"
+  }
+}

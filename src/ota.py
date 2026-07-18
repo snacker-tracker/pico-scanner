@@ -19,7 +19,9 @@ def _release_url(config):
 
 def check_and_apply(config, manifest):
     try:
-        res = requests.get(_release_url(config), headers={'user-agent': 'pico-scanner-ota'})
+        url = _release_url(config)
+        print("OTA URL: " + url)
+        res = requests.get(url, headers={'user-agent': 'pico-scanner-ota'})
         if res.status_code != 200:
             print("OTA release fetch failed: " + str(res.status_code))
             return False
