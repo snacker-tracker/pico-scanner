@@ -1,70 +1,58 @@
 import urequests as requests
-import ujson
-import utarfile
-import os
+import mip
 
-# Base URL where {device_name}.json manifests are served from
-OTA_BASE = "https://micropython-continuous-delivery.s3-ap-southeast-1.amazonaws.com"
+GITHUB_REPO = "snacker-tracker/pico-scanner"
+GITHUB_RELEASES_API = "https://api.github.com/repos/" + GITHUB_REPO + "/releases"
+# /releases/latest only ever returns the newest non-prerelease, non-draft release.
+# Canary devices instead list all releases (newest first) and take the very
+# latest one, prerelease or not, so they can pick up a build before it's promoted.
+STABLE_RELEASE_URL = GITHUB_RELEASES_API + "/latest"
+CANARY_RELEASE_URL = GITHUB_RELEASES_API
 
 print("importing OTA")
 
 
-def check_and_apply(config, manifest):
-    device_name = config.get('device_name', 'unknown')
-    manifest_url = OTA_BASE + "/" + device_name + ".json"
+def _release_url(config):
+    channel = config.get('ota', {}).get('channel', 'stable')
+    return CANARY_RELEASE_URL if channel == 'canary' else STABLE_RELEASE_URL
 
+
+def check_and_apply(config, manifest):
     try:
-        res = requests.get(manifest_url)
+        res = requests.get(_release_url(config), headers={'user-agent': 'pico-scanner-ota'})
         if res.status_code != 200:
-            print("OTA manifest fetch failed: " + str(res.status_code))
+            print("OTA release fetch failed: " + str(res.status_code))
             return False
-        remote = res.json()
+        body = res.json()
+        release = body[0] if isinstance(body, list) else body
+        if not release:
+            print("OTA: no releases available")
+            return False
     except Exception as e:
-        print("OTA manifest error: " + str(e))
+        print("OTA release error: " + str(e))
         return False
 
     current_version = manifest.get('version', '')
-    remote_version = remote.get('version', '')
+    remote_version = release.get('tag_name', '')
 
-    if remote_version == current_version:
+    if not remote_version or remote_version == current_version:
         print("OTA: up to date (" + current_version + ")")
         return False
 
     print("OTA: updating " + current_version + " -> " + remote_version)
-    return _apply(remote)
+    return _apply(remote_version, manifest)
 
 
-def _apply(remote_manifest):
+def _apply(remote_version, manifest):
     try:
-        res = requests.get(remote_manifest['package_url'])
-        with open('update.tar', 'wb') as f:
-            f.write(res.content)
-
-        tar = utarfile.TarFile('update.tar')
-        for info in tar:
-            if info.type == utarfile.DIRTYPE:
-                try:
-                    os.mkdir(info.name)
-                except OSError:
-                    pass
-            else:
-                extracted = tar.extractfile(info)
-                with open(info.name, 'wb') as dst:
-                    while True:
-                        buf = extracted.read(512)
-                        if not buf:
-                            break
-                        dst.write(buf)
+        mip.install("github:" + GITHUB_REPO, version=remote_version, target="/")
 
         from config import save_manifest
-        save_manifest(remote_manifest)
+        new_manifest = dict(manifest)
+        new_manifest['version'] = remote_version
+        save_manifest(new_manifest)
 
-        try:
-            os.remove('update.tar')
-        except OSError:
-            pass
-
-        print("OTA: applied " + remote_manifest.get('version', '?'))
+        print("OTA: applied " + remote_version)
         return True
 
     except Exception as e:
