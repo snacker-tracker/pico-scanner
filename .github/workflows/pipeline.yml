@@ -48,12 +48,12 @@ jobs:
           major_minor=$(uv version --short | cut -d. -f1,2)
           echo "full=${major_minor}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
-  # Every push to main becomes an installable canary build: a GitHub
+  # Every push to master becomes an installable canary build: a GitHub
   # prerelease that canary devices (config.json ota.channel = "canary")
   # pick up on their next check, without touching the stable channel.
   canary:
     needs: version
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
