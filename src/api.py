@@ -39,6 +39,31 @@ def post_scan(code, location, config, manifest):
     return res.json()
 
 
+def send_heartbeat(location, config, manifest, uptime_ms):
+    headers = {
+        'content-type': 'application/json',
+        'X-API-Key': config['api']['token'],
+        'user-agent': _user_agent(manifest)
+    }
+
+    data = ujson.dumps({
+        'location': location,
+        'version': manifest.get('version', 'unknown'),
+        'uptime_ms': uptime_ms
+    })
+    url = config['api']['url'] + "/heartbeat"
+
+    res = requests.post(
+        url,
+        headers=headers,
+        data=data
+    )
+
+    if res.status_code >= 400:
+        raise RuntimeError("API error " + str(res.status_code))
+    return res.json()
+
+
 def health_check(config, manifest):
     try:
         res = requests.get(

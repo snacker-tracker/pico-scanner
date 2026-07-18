@@ -11,5 +11,8 @@
   "ota": {
     "channel": "stable",
     "check_interval_seconds": 1800
+  },
+  "heartbeat": {
+    "interval_seconds": 300
   }
 }

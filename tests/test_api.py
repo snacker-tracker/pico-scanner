@@ -72,6 +72,50 @@ def test_post_scan_raises_on_5xx(requests_mock):
         post_scan('1234567890128', 'loc', CONFIG, MANIFEST)
 
 
+def test_send_heartbeat_sends_correct_payload(requests_mock):
+    requests_mock.post(
+        'https://reporter.example.com/heartbeat',
+        json={'ok': True},
+        status_code=200
+    )
+
+    from api import send_heartbeat
+    result = send_heartbeat('building:room:spot', CONFIG, MANIFEST, 123456)
+
+    assert result['ok'] is True
+
+    history = requests_mock.last_request
+    body = json.loads(history.text)
+    assert body['location'] == 'building:room:spot'
+    assert body['version'] == '1.0.0-abc-app'
+    assert body['uptime_ms'] == 123456
+    assert history.headers['X-API-Key'] == 'test-token'
+    assert history.headers['Content-Type'] == 'application/json'
+
+
+def test_send_heartbeat_raises_on_4xx(requests_mock):
+    requests_mock.post(
+        'https://reporter.example.com/heartbeat',
+        json={'error': 'unauthorized'},
+        status_code=401
+    )
+
+    from api import send_heartbeat
+    with pytest.raises(RuntimeError, match='401'):
+        send_heartbeat('loc', CONFIG, MANIFEST, 0)
+
+
+def test_send_heartbeat_raises_on_5xx(requests_mock):
+    requests_mock.post(
+        'https://reporter.example.com/heartbeat',
+        status_code=500
+    )
+
+    from api import send_heartbeat
+    with pytest.raises(RuntimeError, match='500'):
+        send_heartbeat('loc', CONFIG, MANIFEST, 0)
+
+
 def test_health_check_returns_true_on_success(requests_mock):
     requests_mock.get(
         'https://reporter.example.com/v1/scans',

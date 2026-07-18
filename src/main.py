@@ -15,6 +15,7 @@ _uart_cfg = _manifest.get('hardware', {}).get('uart', {})
 _location = _manifest.get('scanner', {}).get('location', 'unknown:unknown:unknown')
 
 OTA_CHECK_INTERVAL_MS = _config.get('ota', {}).get('check_interval_seconds', 1800) * 1000
+HEARTBEAT_INTERVAL_MS = _config.get('heartbeat', {}).get('interval_seconds', 300) * 1000
 
 uart = UART(
     _uart_cfg.get('device', 1),
@@ -30,7 +31,9 @@ uart.init(
 
 print("Scanner ready at " + _location)
 
-_last_ota_check = time.ticks_ms()
+_boot_ticks = time.ticks_ms()
+_last_ota_check = _boot_ticks
+_last_heartbeat = _boot_ticks
 
 while True:
     if uart.any():
@@ -55,5 +58,15 @@ while True:
                 machine.reset()
         except Exception as e:
             print("OTA check failed: " + str(e))
+
+    if time.ticks_diff(time.ticks_ms(), _last_heartbeat) >= HEARTBEAT_INTERVAL_MS:
+        _last_heartbeat = time.ticks_ms()
+        try:
+            # ticks_ms wraps every ~12 days; ticks_diff handles one wrap correctly,
+            # so uptime stays accurate as long as reboots happen more often than that.
+            uptime_ms = time.ticks_diff(time.ticks_ms(), _boot_ticks)
+            api.send_heartbeat(_location, _config, _manifest, uptime_ms)
+        except Exception as e:
+            print("Heartbeat failed: " + str(e))
 
     time.sleep_ms(100)
