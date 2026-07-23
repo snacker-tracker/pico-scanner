@@ -1,14 +1,14 @@
 import network
 import machine
 import time
-import ujson
 import log
+
+import config as config_module
 
 logger = log.getLogger("boot")
 
 
-def connect_wifi(config):
-    wifi = config.get('wifi', {})
+def connect_wifi(wifi):
     ssid = wifi.get('ssid')
     if not ssid:
         logger.warning("No WiFi config found")
@@ -34,24 +34,13 @@ def connect_wifi(config):
     return False
 
 
-try:
-    with open('config.json') as f:
-        _config = ujson.load(f)
-except OSError:
-    logger.warning("No config.json found — create one from config.json.template")
-    _config = {}
+_wifi = config_module.load('wifi')
+_ota_data = config_module.load('ota')
 
-try:
-    with open('manifest.json') as f:
-        _manifest = ujson.load(f)
-except OSError:
-    _manifest = {}
-
-if connect_wifi(_config):
+if connect_wifi(_wifi):
     try:
         import ota
-        logger.debug(str(dir(ota)))
-        if ota.check_and_apply(_config, _manifest):
+        if ota.check_and_apply(_ota_data):
             machine.reset()
     except Exception as e:
         logger.error("OTA check failed: " + str(e))

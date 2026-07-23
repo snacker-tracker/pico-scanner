@@ -6,25 +6,25 @@ import log
 logger = log.getLogger("api")
 
 
-def _user_agent(manifest):
+def _user_agent(ota_data, device):
     return "".join([
         sys.platform, "/",
         sys.implementation.name, "-",
         ".".join(map(str, list(sys.implementation.version))),
-        "/", manifest.get('package', 'unknown'), "-", manifest.get('version', 'unknown')
+        "/", ota_data.get('github_repo', 'unknown'), "-", ota_data.get('version', 'unknown'),
+        "/", device.get('device_name', 'unknown')
     ])
 
 
-def post_scan(code, location, config, manifest):
+def post_scan(code, location, app, ota_data, device):
     headers = {
         'content-type': 'application/json',
-        #'authorization': "Bearer " + config['api']['token'],
-        'X-API-Key': config['api']['token'],
-        'user-agent': _user_agent(manifest)
+        'X-API-Key': app['api']['token'],
+        'user-agent': _user_agent(ota_data, device)
     }
 
     data = ujson.dumps({'code': code, 'location': location})
-    url = config['api']['url'] + "/scans"
+    url = app['api']['url'] + "/scans"
 
     logger.debug(url)
     logger.debug(str(headers) + " " + data)
@@ -35,26 +35,33 @@ def post_scan(code, location, config, manifest):
         data=data
     )
 
-    logger.debug(str(res.status_code))
+    try:
+        logger.debug(str(res.status_code))
 
-    if res.status_code >= 400:
-        raise RuntimeError("API error " + str(res.status_code))
-    return res.json()
+        if res.status_code >= 400:
+            raise RuntimeError("API error " + str(res.status_code))
+        return res.json()
+    finally:
+        res.close()
 
 
-def send_heartbeat(location, config, manifest, uptime_ms):
+def send_heartbeat(location, app, ota_data, device, uptime):
     headers = {
         'content-type': 'application/json',
-        'X-API-Key': config['api']['token'],
-        'user-agent': _user_agent(manifest)
+        'X-API-Key': app['api']['token'],
+        'user-agent': _user_agent(ota_data, device)
     }
 
     data = ujson.dumps({
         'location': location,
-        'version': manifest.get('version', 'unknown'),
-        'uptime_ms': uptime_ms
+        'version': ota_data.get('version', 'unknown'),
+        'device_name': device.get('device_name', 'unknown'),
+        'uptime': uptime
     })
-    url = config['api']['url'] + "/heartbeat"
+    url = app['api']['url'] + "/heartbeat"
+
+    logger.debug(url)
+    logger.debug(str(headers) + " " + data)
 
     res = requests.post(
         url,
@@ -62,17 +69,27 @@ def send_heartbeat(location, config, manifest, uptime_ms):
         data=data
     )
 
-    if res.status_code >= 400:
-        raise RuntimeError("API error " + str(res.status_code))
-    return res.json()
+    try:
+        logger.debug(str(res.status_code))
+
+        if res.status_code >= 400:
+            logger.error("Heartbeat error body: " + res.text)
+            raise RuntimeError("API error " + str(res.status_code))
+        return res.json()
+    finally:
+        res.close()
 
 
-def health_check(config, manifest):
+def health_check(app, ota_data, device):
+    res = None
     try:
         res = requests.get(
-            config['api']['url'] + "/v1/scans",
-            headers={'user-agent': _user_agent(manifest)}
+            app['api']['url'] + "/v1/scans",
+            headers={'user-agent': _user_agent(ota_data, device)}
         )
         return res.status_code < 400
     except Exception:
         return False
+    finally:
+        if res is not None:
+            res.close()

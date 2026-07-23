@@ -1,4 +1,5 @@
-config.json
+wifi.json
+app.json
 src/lib/
 *.tar
 __pycache__/

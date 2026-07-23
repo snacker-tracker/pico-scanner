@@ -42,35 +42,45 @@ def test_handle_wifi_updates_ssid_and_password(monkeypatch):
     saved = {}
 
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: saved.update(c))
 
-    config = {'wifi': {'ssid': 'old', 'password': 'old'}}
+    def fake_save(config_type, data):
+        assert config_type == 'wifi'
+        saved.update(data)
+
+    monkeypatch.setattr(qr_config.config, 'save', fake_save)
+
+    wifi = {'ssid': 'old', 'password': 'old'}
 
     with pytest.raises(ResetCalled):
-        qr_config._handle_wifi('WIFI:T:WPA;S:NewNet;P:NewPass;;', config)
+        qr_config._handle_wifi('WIFI:T:WPA;S:NewNet;P:NewPass;;', wifi)
 
-    assert saved['wifi']['ssid'] == 'NewNet'
-    assert saved['wifi']['password'] == 'NewPass'
+    assert saved['ssid'] == 'NewNet'
+    assert saved['password'] == 'NewPass'
 
 
 def test_handle_wifi_open_network_drops_password(monkeypatch):
     saved = {}
 
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: saved.update(c))
 
-    config = {'wifi': {'ssid': 'old', 'password': 'old'}}
+    def fake_save(config_type, data):
+        assert config_type == 'wifi'
+        saved.update(data)
+
+    monkeypatch.setattr(qr_config.config, 'save', fake_save)
+
+    wifi = {'ssid': 'old', 'password': 'old'}
 
     with pytest.raises(ResetCalled):
-        qr_config._handle_wifi('WIFI:S:OpenNet;;', config)
+        qr_config._handle_wifi('WIFI:S:OpenNet;;', wifi)
 
-    assert saved['wifi']['ssid'] == 'OpenNet'
-    assert 'password' not in saved['wifi']
+    assert saved['ssid'] == 'OpenNet'
+    assert 'password' not in saved
 
 
 def test_handle_wifi_missing_ssid_raises(monkeypatch):
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: None)
+    monkeypatch.setattr(qr_config.config, 'save', lambda t, d: None)
 
     with pytest.raises(ValueError, match='SSID'):
         qr_config._handle_wifi('WIFI:T:WPA;P:pass;;', {})
@@ -80,12 +90,17 @@ def test_handle_backend_updates_api(monkeypatch):
     saved = {}
 
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: saved.update(c))
 
-    config = {'api': {'url': 'old', 'token': 'old'}}
+    def fake_save(config_type, data):
+        assert config_type == 'app'
+        saved.update(data)
+
+    monkeypatch.setattr(qr_config.config, 'save', fake_save)
+
+    app = {'api': {'url': 'old', 'token': 'old'}}
 
     with pytest.raises(ResetCalled):
-        qr_config._handle_backend('SNACKER:URL:https://new.example.com;TOKEN:newtoken;;', config)
+        qr_config._handle_backend('SNACKER:URL:https://new.example.com;TOKEN:newtoken;;', app)
 
     assert saved['api']['url'] == 'https://new.example.com'
     assert saved['api']['token'] == 'newtoken'
@@ -93,7 +108,7 @@ def test_handle_backend_updates_api(monkeypatch):
 
 def test_handle_backend_missing_url_raises(monkeypatch):
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: None)
+    monkeypatch.setattr(qr_config.config, 'save', lambda t, d: None)
 
     with pytest.raises(ValueError, match='URL'):
         qr_config._handle_backend('SNACKER:TOKEN:abc;;', {})
@@ -101,7 +116,7 @@ def test_handle_backend_missing_url_raises(monkeypatch):
 
 def test_handle_backend_missing_token_raises(monkeypatch):
     import qr_config
-    monkeypatch.setattr(qr_config, 'save_config', lambda c: None)
+    monkeypatch.setattr(qr_config.config, 'save', lambda t, d: None)
 
     with pytest.raises(ValueError, match='TOKEN'):
         qr_config._handle_backend('SNACKER:URL:https://x;;', {})

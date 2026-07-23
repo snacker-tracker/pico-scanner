@@ -1,0 +1,15 @@
+{
+  "device_name": "rpi-pico-w-01",
+  "location": "building:room:spot",
+  "hardware": {
+    "uart": {
+      "bits": 8,
+      "baud_rate": 9600,
+      "parity": null,
+      "tx_pin": 4,
+      "device": 1,
+      "stop": 1,
+      "rx_pin": 5
+    }
+  }
+}

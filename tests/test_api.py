@@ -2,12 +2,16 @@ import pytest
 import json
 
 
-MANIFEST = {
-    'package': 'snacker-tracker-pico-scanner',
+OTA_DATA = {
+    'github_repo': 'snacker-tracker/pico-scanner',
     'version': '1.0.0-abc-app',
 }
 
-CONFIG = {
+DEVICE = {
+    'device_name': 'rpi-pico-w-01',
+}
+
+APP = {
     'api': {
         'url': 'https://reporter.example.com',
         'token': 'test-token',
@@ -15,16 +19,17 @@ CONFIG = {
 }
 
 
-def test_user_agent_contains_package_and_version():
+def test_user_agent_contains_github_repo_and_version():
     from api import _user_agent
-    ua = _user_agent(MANIFEST)
-    assert 'snacker-tracker-pico-scanner' in ua
+    ua = _user_agent(OTA_DATA, DEVICE)
+    assert 'snacker-tracker/pico-scanner' in ua
     assert '1.0.0-abc-app' in ua
+    assert 'rpi-pico-w-01' in ua
 
 
-def test_user_agent_handles_missing_manifest():
+def test_user_agent_handles_missing_data():
     from api import _user_agent
-    ua = _user_agent({})
+    ua = _user_agent({}, {})
     assert 'unknown' in ua
 
 
@@ -36,7 +41,7 @@ def test_post_scan_sends_correct_payload(requests_mock):
     )
 
     from api import post_scan
-    result = post_scan('1234567890128', 'building:room:spot', CONFIG, MANIFEST)
+    result = post_scan('1234567890128', 'building:room:spot', APP, OTA_DATA, DEVICE)
 
     assert result['id'] == 'scan-123'
     assert result['code'] == '1234567890128'
@@ -58,7 +63,7 @@ def test_post_scan_raises_on_4xx(requests_mock):
 
     from api import post_scan
     with pytest.raises(RuntimeError, match='401'):
-        post_scan('1234567890128', 'loc', CONFIG, MANIFEST)
+        post_scan('1234567890128', 'loc', APP, OTA_DATA, DEVICE)
 
 
 def test_post_scan_raises_on_5xx(requests_mock):
@@ -69,7 +74,7 @@ def test_post_scan_raises_on_5xx(requests_mock):
 
     from api import post_scan
     with pytest.raises(RuntimeError, match='500'):
-        post_scan('1234567890128', 'loc', CONFIG, MANIFEST)
+        post_scan('1234567890128', 'loc', APP, OTA_DATA, DEVICE)
 
 
 def test_send_heartbeat_sends_correct_payload(requests_mock):
@@ -80,7 +85,7 @@ def test_send_heartbeat_sends_correct_payload(requests_mock):
     )
 
     from api import send_heartbeat
-    result = send_heartbeat('building:room:spot', CONFIG, MANIFEST, 123456)
+    result = send_heartbeat('building:room:spot', APP, OTA_DATA, DEVICE, 123)
 
     assert result['ok'] is True
 
@@ -88,7 +93,8 @@ def test_send_heartbeat_sends_correct_payload(requests_mock):
     body = json.loads(history.text)
     assert body['location'] == 'building:room:spot'
     assert body['version'] == '1.0.0-abc-app'
-    assert body['uptime_ms'] == 123456
+    assert body['device_name'] == 'rpi-pico-w-01'
+    assert body['uptime'] == 123
     assert history.headers['X-API-Key'] == 'test-token'
     assert history.headers['Content-Type'] == 'application/json'
 
@@ -102,7 +108,7 @@ def test_send_heartbeat_raises_on_4xx(requests_mock):
 
     from api import send_heartbeat
     with pytest.raises(RuntimeError, match='401'):
-        send_heartbeat('loc', CONFIG, MANIFEST, 0)
+        send_heartbeat('loc', APP, OTA_DATA, DEVICE, 0)
 
 
 def test_send_heartbeat_raises_on_5xx(requests_mock):
@@ -113,7 +119,7 @@ def test_send_heartbeat_raises_on_5xx(requests_mock):
 
     from api import send_heartbeat
     with pytest.raises(RuntimeError, match='500'):
-        send_heartbeat('loc', CONFIG, MANIFEST, 0)
+        send_heartbeat('loc', APP, OTA_DATA, DEVICE, 0)
 
 
 def test_health_check_returns_true_on_success(requests_mock):
@@ -124,7 +130,7 @@ def test_health_check_returns_true_on_success(requests_mock):
     )
 
     from api import health_check
-    assert health_check(CONFIG, MANIFEST) is True
+    assert health_check(APP, OTA_DATA, DEVICE) is True
 
 
 def test_health_check_returns_false_on_error(requests_mock):
@@ -134,7 +140,7 @@ def test_health_check_returns_false_on_error(requests_mock):
     )
 
     from api import health_check
-    assert health_check(CONFIG, MANIFEST) is False
+    assert health_check(APP, OTA_DATA, DEVICE) is False
 
 
 def test_health_check_returns_false_on_network_error(requests_mock):
@@ -145,4 +151,4 @@ def test_health_check_returns_false_on_network_error(requests_mock):
     )
 
     from api import health_check
-    assert health_check(CONFIG, MANIFEST) is False
+    assert health_check(APP, OTA_DATA, DEVICE) is False

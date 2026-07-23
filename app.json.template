@@ -1,0 +1,9 @@
+{
+  "api": {
+    "url": "https://reporter.snacker-tracker.example.com",
+    "token": "your-api-token"
+  },
+  "heartbeat": {
+    "interval_seconds": 300
+  }
+}

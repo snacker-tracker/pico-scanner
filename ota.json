@@ -1,0 +1,6 @@
+{
+  "channel": "canary",
+  "check_interval_seconds": 1800,
+  "version": "v0.1.22",
+  "github_repo": "snacker-tracker/pico-scanner"
+}
