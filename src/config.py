@@ -4,10 +4,10 @@ import log
 logger = log.getLogger("config")
 
 _FILENAMES = {
-    'wifi': 'wifi.json',
-    'device': 'device.json',
-    'app': 'app.json',
-    'ota': 'ota.json',
+    "wifi": "wifi.json",
+    "device": "device.json",
+    "app": "app.json",
+    "ota": "ota.json",
 }
 
 
@@ -25,6 +25,6 @@ def load(config_type):
 
 def save(config_type, data):
     filename = _FILENAMES[config_type]
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         f.write(ujson.dumps(data))
     logger.debug("wrote " + filename + " " + str(data))

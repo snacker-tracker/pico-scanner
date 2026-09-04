@@ -9,7 +9,7 @@ logger = log.getLogger("boot")
 
 
 def connect_wifi(wifi):
-    ssid = wifi.get('ssid')
+    ssid = wifi.get("ssid")
     if not ssid:
         logger.warning("No WiFi config found")
         return False
@@ -21,7 +21,7 @@ def connect_wifi(wifi):
         logger.info("WiFi already connected: " + str(wlan.ifconfig()[0]))
         return True
 
-    password = wifi.get('password', '')
+    password = wifi.get("password", "")
     wlan.connect(ssid, password)
 
     for _ in range(20):
@@ -34,12 +34,13 @@ def connect_wifi(wifi):
     return False
 
 
-_wifi = config_module.load('wifi')
-_ota_data = config_module.load('ota')
+_wifi = config_module.load("wifi")
+_ota_data = config_module.load("ota")
 
 if connect_wifi(_wifi):
     try:
         import ota
+
         if ota.check_and_apply(_ota_data):
             machine.reset()
     except Exception as e:

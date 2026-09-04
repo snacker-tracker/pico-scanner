@@ -27,15 +27,15 @@ class Periodic:
 
 def _make_uart(uart_cfg):
     uart = UART(
-        uart_cfg.get('device', 1),
-        baudrate=uart_cfg.get('baud_rate', 9600),
-        tx=Pin(uart_cfg.get('tx_pin', 4)),
-        rx=Pin(uart_cfg.get('rx_pin', 5))
+        uart_cfg.get("device", 1),
+        baudrate=uart_cfg.get("baud_rate", 9600),
+        tx=Pin(uart_cfg.get("tx_pin", 4)),
+        rx=Pin(uart_cfg.get("rx_pin", 5)),
     )
     uart.init(
-        bits=uart_cfg.get('bits', 8),
-        parity=uart_cfg.get('parity'),
-        stop=uart_cfg.get('stop', 1)
+        bits=uart_cfg.get("bits", 8),
+        parity=uart_cfg.get("parity"),
+        stop=uart_cfg.get("stop", 1),
     )
     return uart
 
@@ -45,7 +45,7 @@ def _handle_uart(uart, wifi, app, ota_data, device, location):
         return
 
     try:
-        value = uart.read().decode('utf-8').strip()
+        value = uart.read().decode("utf-8").strip()
         if not value:
             return
 
@@ -55,7 +55,9 @@ def _handle_uart(uart, wifi, app, ota_data, device, location):
         else:
             logger.info("Scan: " + value)
             scan = api.post_scan(value, location, app, ota_data, device)
-            logger.info("  -> " + scan.get('id', '?') + " at " + scan.get('scanned_at', '?'))
+            logger.info(
+                "  -> " + scan.get("id", "?") + " at " + scan.get("scanned_at", "?")
+            )
     except Exception as e:
         logger.error("Error: " + str(e))
 
@@ -79,24 +81,24 @@ def _send_heartbeat(app, ota_data, device, location, boot_ticks):
 
 
 def run():
-    wifi = config_module.load('wifi')
-    device = config_module.load('device')
-    app = config_module.load('app')
-    ota_data = config_module.load('ota')
+    wifi = config_module.load("wifi")
+    device = config_module.load("device")
+    app = config_module.load("app")
+    ota_data = config_module.load("ota")
 
-    uart_cfg = device.get('hardware', {}).get('uart', {})
-    location = device.get('location', 'unknown:unknown:unknown')
+    uart_cfg = device.get("hardware", {}).get("uart", {})
+    location = device.get("location", "unknown:unknown:unknown")
 
     uart = _make_uart(uart_cfg)
     boot_ticks = time.ticks_ms()
 
     ota_task = Periodic(
-        ota_data.get('check_interval_seconds', 1800) * 1000,
-        lambda: _check_ota(ota_data)
+        ota_data.get("check_interval_seconds", 1800) * 1000,
+        lambda: _check_ota(ota_data),
     )
     heartbeat_task = Periodic(
-        app.get('heartbeat', {}).get('interval_seconds', 300) * 1000,
-        lambda: _send_heartbeat(app, ota_data, device, location, boot_ticks)
+        app.get("heartbeat", {}).get("interval_seconds", 300) * 1000,
+        lambda: _send_heartbeat(app, ota_data, device, location, boot_ticks),
     )
 
     logger.info("Scanner ready at " + location)

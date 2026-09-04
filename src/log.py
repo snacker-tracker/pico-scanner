@@ -5,11 +5,11 @@ ERROR = 40
 CRITICAL = 50
 
 _LEVEL_NAMES = {
-    DEBUG: 'DEBUG',
-    INFO: 'INFO',
-    WARNING: 'WARNING',
-    ERROR: 'ERROR',
-    CRITICAL: 'CRITICAL',
+    DEBUG: "DEBUG",
+    INFO: "INFO",
+    WARNING: "WARNING",
+    ERROR: "ERROR",
+    CRITICAL: "CRITICAL",
 }
 
 
@@ -39,7 +39,7 @@ class Logger:
 _loggers = {}
 
 
-def getLogger(name='root'):
+def getLogger(name="root"):
     if name not in _loggers:
         _loggers[name] = Logger(name)
     return _loggers[name]

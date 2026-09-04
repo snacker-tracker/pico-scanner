@@ -17,7 +17,7 @@ class Pin:
 class UART:
     def __init__(self, id, baudrate=9600, tx=None, rx=None):
         self.id = id
-        self._buffer = b''
+        self._buffer = b""
 
     def init(self, bits=8, parity=None, stop=1):
         pass
@@ -27,5 +27,5 @@ class UART:
 
     def read(self):
         data = self._buffer
-        self._buffer = b''
+        self._buffer = b""
         return data
