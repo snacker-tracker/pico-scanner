@@ -14,10 +14,11 @@ logger = log.getLogger("main")
 class Periodic:
     """Runs `action` at most once every `interval_ms`, tracking its own last-run time."""
 
-    def __init__(self, interval_ms, action):
+    def __init__(self, interval_ms, action, run_immediately=False):
         self.interval_ms = interval_ms
         self.action = action
-        self.last_run = time.ticks_ms()
+        now = time.ticks_ms()
+        self.last_run = time.ticks_add(now, -interval_ms) if run_immediately else now
 
     def tick(self):
         if time.ticks_diff(time.ticks_ms(), self.last_run) >= self.interval_ms:
@@ -99,14 +100,15 @@ def run():
     heartbeat_task = Periodic(
         app.get("heartbeat", {}).get("interval_seconds", 300) * 1000,
         lambda: _send_heartbeat(app, ota_data, device, location, boot_ticks),
+        run_immediately=True,
     )
 
     logger.info("Scanner ready at " + location)
 
     while True:
-        _handle_uart(uart, wifi, app, ota_data, device, location)
         ota_task.tick()
         heartbeat_task.tick()
+        _handle_uart(uart, wifi, app, ota_data, device, location)
         time.sleep_ms(100)
 
 
