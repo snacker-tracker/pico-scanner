@@ -104,6 +104,54 @@ def test_send_heartbeat_sends_correct_payload(requests_mock):
     assert history.headers["Content-Type"] == "application/json"
 
 
+def test_send_heartbeat_includes_telemetry(requests_mock):
+    requests_mock.post(
+        "https://reporter.example.com/heartbeat", json={"ok": True}, status_code=200
+    )
+
+    from api import send_heartbeat
+
+    send_heartbeat(
+        "building:room:spot",
+        APP,
+        OTA_DATA,
+        DEVICE,
+        123,
+        telemetry={"mem_free": "12345", "reset_cause": "power_on"},
+    )
+
+    history = requests_mock.last_request
+    body = json.loads(history.text)
+    assert body["telemetry"] == {"mem_free": "12345", "reset_cause": "power_on"}
+
+
+def test_send_heartbeat_includes_device_identity(requests_mock):
+    requests_mock.post(
+        "https://reporter.example.com/heartbeat", json={"ok": True}, status_code=200
+    )
+
+    from api import send_heartbeat
+
+    send_heartbeat(
+        "building:room:spot",
+        APP,
+        OTA_DATA,
+        DEVICE,
+        123,
+        device_identity={
+            "board_model": "Raspberry Pi Pico W with RP2040",
+            "micropython_version": "1.22.0",
+            "serial_number": "e6614c775f7a2b34",
+        },
+    )
+
+    history = requests_mock.last_request
+    body = json.loads(history.text)
+    assert body["board_model"] == "Raspberry Pi Pico W with RP2040"
+    assert body["micropython_version"] == "1.22.0"
+    assert body["serial_number"] == "e6614c775f7a2b34"
+
+
 def test_send_heartbeat_raises_on_4xx(requests_mock):
     requests_mock.post(
         "https://reporter.example.com/heartbeat",
