@@ -158,6 +158,7 @@ def run():
         ota_task.tick()
         heartbeat_task.tick()
         _handle_uart(uart, wifi, app, ota_data, device, location)
+        gc.collect()
         time.sleep_ms(100)
 
 
