@@ -49,7 +49,7 @@ def post_scan(code, location, app, ota_data, device):
         res.close()
 
 
-def send_heartbeat(location, app, ota_data, device, uptime, telemetry=None, device_identity=None):
+def send_heartbeat(app, ota_data, device, identity=None, telemetry=None):
     headers = {
         "content-type": "application/json",
         "X-API-Key": app["api"]["token"],
@@ -57,13 +57,10 @@ def send_heartbeat(location, app, ota_data, device, uptime, telemetry=None, devi
     }
 
     payload = {
-        "location": location,
-        "version": ota_data.get("version", "unknown"),
-        "device_name": device.get("device_name", "unknown"),
-        "uptime": uptime,
+        "schema_version": 2,
     }
-    if device_identity:
-        payload.update(device_identity)
+    if identity:
+        payload.update(identity)
     if telemetry:
         payload["telemetry"] = telemetry
     data = ujson.dumps(payload)

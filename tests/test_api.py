@@ -90,18 +90,56 @@ def test_send_heartbeat_sends_correct_payload(requests_mock):
 
     from api import send_heartbeat
 
-    result = send_heartbeat("building:room:spot", APP, OTA_DATA, DEVICE, 123)
+    result = send_heartbeat(APP, OTA_DATA, DEVICE)
 
     assert result["ok"] is True
 
     history = requests_mock.last_request
     body = json.loads(history.text)
-    assert body["location"] == "building:room:spot"
-    assert body["version"] == "1.0.0-abc-app"
-    assert body["device_name"] == "rpi-pico-w-01"
-    assert body["uptime"] == 123
+    assert body["schema_version"] == 2
     assert history.headers["X-API-Key"] == "test-token"
     assert history.headers["Content-Type"] == "application/json"
+
+
+def test_send_heartbeat_includes_identity(requests_mock):
+    requests_mock.post(
+        "https://reporter.example.com/heartbeat", json={"ok": True}, status_code=200
+    )
+
+    from api import send_heartbeat
+
+    send_heartbeat(
+        APP,
+        OTA_DATA,
+        DEVICE,
+        identity={
+            "device": {
+                "id": "e6614c775f7a2b34",
+                "name": "rpi-pico-w-01",
+                "location": "building:room:spot",
+                "board": "Raspberry Pi Pico W with RP2040",
+            },
+            "app": {
+                "name": "snacker-tracker/pico-scanner",
+                "version": "1.0.0-abc-app",
+            },
+            "platform": {
+                "name": "micropython",
+                "version": "1.22.0",
+            },
+        },
+    )
+
+    history = requests_mock.last_request
+    body = json.loads(history.text)
+    assert body["device"] == {
+        "id": "e6614c775f7a2b34",
+        "name": "rpi-pico-w-01",
+        "location": "building:room:spot",
+        "board": "Raspberry Pi Pico W with RP2040",
+    }
+    assert body["app"] == {"name": "snacker-tracker/pico-scanner", "version": "1.0.0-abc-app"}
+    assert body["platform"] == {"name": "micropython", "version": "1.22.0"}
 
 
 def test_send_heartbeat_includes_telemetry(requests_mock):
@@ -112,44 +150,25 @@ def test_send_heartbeat_includes_telemetry(requests_mock):
     from api import send_heartbeat
 
     send_heartbeat(
-        "building:room:spot",
         APP,
         OTA_DATA,
         DEVICE,
-        123,
-        telemetry={"mem_free": "12345", "reset_cause": "power_on"},
-    )
-
-    history = requests_mock.last_request
-    body = json.loads(history.text)
-    assert body["telemetry"] == {"mem_free": "12345", "reset_cause": "power_on"}
-
-
-def test_send_heartbeat_includes_device_identity(requests_mock):
-    requests_mock.post(
-        "https://reporter.example.com/heartbeat", json={"ok": True}, status_code=200
-    )
-
-    from api import send_heartbeat
-
-    send_heartbeat(
-        "building:room:spot",
-        APP,
-        OTA_DATA,
-        DEVICE,
-        123,
-        device_identity={
-            "board_model": "Raspberry Pi Pico W with RP2040",
-            "micropython_version": "1.22.0",
-            "serial_number": "e6614c775f7a2b34",
+        telemetry={
+            "uptime": 123,
+            "mem_free": 12345,
+            "reset_cause": "power_on",
+            "wifi_rssi": -63,
         },
     )
 
     history = requests_mock.last_request
     body = json.loads(history.text)
-    assert body["board_model"] == "Raspberry Pi Pico W with RP2040"
-    assert body["micropython_version"] == "1.22.0"
-    assert body["serial_number"] == "e6614c775f7a2b34"
+    assert body["telemetry"] == {
+        "uptime": 123,
+        "mem_free": 12345,
+        "reset_cause": "power_on",
+        "wifi_rssi": -63,
+    }
 
 
 def test_send_heartbeat_raises_on_4xx(requests_mock):
@@ -162,7 +181,7 @@ def test_send_heartbeat_raises_on_4xx(requests_mock):
     from api import send_heartbeat
 
     with pytest.raises(RuntimeError, match="401"):
-        send_heartbeat("loc", APP, OTA_DATA, DEVICE, 0)
+        send_heartbeat(APP, OTA_DATA, DEVICE)
 
 
 def test_send_heartbeat_raises_on_5xx(requests_mock):
@@ -171,7 +190,7 @@ def test_send_heartbeat_raises_on_5xx(requests_mock):
     from api import send_heartbeat
 
     with pytest.raises(RuntimeError, match="500"):
-        send_heartbeat("loc", APP, OTA_DATA, DEVICE, 0)
+        send_heartbeat(APP, OTA_DATA, DEVICE)
 
 
 def test_health_check_returns_true_on_success(requests_mock):

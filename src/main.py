@@ -1,6 +1,7 @@
 import time
 import gc
 import os
+import sys
 import ubinascii
 import machine
 import network
@@ -30,12 +31,23 @@ def _reset_cause_name():
     return _RESET_CAUSE_NAMES.get(reset_cause(), "unknown")
 
 
-def _device_identity():
+def _build_identity(device, ota_data):
     uname = os.uname()
     return {
-        "board_model": uname.machine,
-        "micropython_version": uname.release,
-        "serial_number": ubinascii.hexlify(machine.unique_id()).decode(),
+        "device": {
+            "id": ubinascii.hexlify(machine.unique_id()).decode(),
+            "name": device.get("device_name", "unknown"),
+            "location": device.get("location", "unknown:unknown:unknown"),
+            "board": uname.machine,
+        },
+        "app": {
+            "name": ota_data.get("github_repo", "unknown"),
+            "version": ota_data.get("version", "unknown"),
+        },
+        "platform": {
+            "name": sys.implementation.name,
+            "version": uname.release,
+        },
     }
 
 
@@ -99,21 +111,20 @@ def _check_ota(ota_data):
         logger.error("OTA check failed: " + str(e))
 
 
-def _send_heartbeat(app, ota_data, device, location, boot_ticks, device_identity):
+def _send_heartbeat(app, ota_data, device, boot_ticks, identity):
     try:
         # ticks_ms wraps every ~12 days; ticks_diff handles one wrap correctly,
         # so uptime stays accurate as long as reboots happen more often than that.
         uptime_ms = time.ticks_diff(time.ticks_ms(), boot_ticks)
         wlan = network.WLAN(network.STA_IF)
         telemetry = {
+            "uptime": uptime_ms // 1000,
             "mem_free": gc.mem_free(),
             "reset_cause": _reset_cause_name(),
             "wifi_ssid": str(wlan.config("ssid")),
             "wifi_rssi": wlan.status("rssi"),
         }
-        api.send_heartbeat(
-            location, app, ota_data, device, uptime_ms // 1000, telemetry, device_identity
-        )
+        api.send_heartbeat(app, ota_data, device, identity, telemetry)
     except Exception as e:
         logger.error("Heartbeat failed: " + str(e))
 
@@ -129,7 +140,7 @@ def run():
 
     uart = _make_uart(uart_cfg)
     boot_ticks = time.ticks_ms()
-    device_identity = _device_identity()
+    identity = _build_identity(device, ota_data)
 
     ota_task = Periodic(
         ota_data.get("check_interval_seconds", 1800) * 1000,
@@ -137,7 +148,7 @@ def run():
     )
     heartbeat_task = Periodic(
         app.get("heartbeat", {}).get("interval_seconds", 300) * 1000,
-        lambda: _send_heartbeat(app, ota_data, device, location, boot_ticks, device_identity),
+        lambda: _send_heartbeat(app, ota_data, device, boot_ticks, identity),
         run_immediately=True,
     )
 
