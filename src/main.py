@@ -100,7 +100,25 @@ def _handle_uart(uart, wifi, app, ota_data, device, location):
                 "  -> " + scan.get("id", "?") + " at " + scan.get("scanned_at", "?")
             )
     except Exception as e:
-        logger.error("Error: " + str(e))
+        logger.error("Error: " + type(e).__name__ + ": " + str(e))
+
+
+def _ensure_wifi(wifi):
+    ssid = wifi.get("ssid")
+    if not ssid:
+        return
+
+    wlan = network.WLAN(network.STA_IF)
+    if wlan.isconnected():
+        return
+
+    logger.warning("WiFi disconnected, reconnecting")
+    try:
+        wlan.active(True)
+        # connect() is non-blocking; the next tick checks whether it worked.
+        wlan.connect(ssid, wifi.get("password", ""))
+    except Exception as e:
+        logger.error("WiFi reconnect failed: " + type(e).__name__ + ": " + str(e))
 
 
 def _check_ota(ota_data):
@@ -108,7 +126,7 @@ def _check_ota(ota_data):
         if ota.check_and_apply(ota_data):
             machine.reset()
     except Exception as e:
-        logger.error("OTA check failed: " + str(e))
+        logger.error("OTA check failed: " + type(e).__name__ + ": " + str(e))
 
 
 def _send_heartbeat(app, ota_data, device, boot_ticks, identity):
@@ -126,7 +144,7 @@ def _send_heartbeat(app, ota_data, device, boot_ticks, identity):
         }
         api.send_heartbeat(app, ota_data, device, identity, telemetry)
     except Exception as e:
-        logger.error("Heartbeat failed: " + str(e))
+        logger.error("Heartbeat failed: " + type(e).__name__ + ": " + str(e))
 
 
 def run():
@@ -142,6 +160,11 @@ def run():
     boot_ticks = time.ticks_ms()
     identity = _build_identity(device, ota_data)
 
+    wifi_task = Periodic(
+        wifi.get("reconnect_interval_seconds", 30) * 1000,
+        lambda: _ensure_wifi(wifi),
+        run_immediately=True,
+    )
     ota_task = Periodic(
         ota_data.get("check_interval_seconds", 1800) * 1000,
         lambda: _check_ota(ota_data),
@@ -155,6 +178,7 @@ def run():
     logger.info("Scanner ready at " + location)
 
     while True:
+        wifi_task.tick()
         ota_task.tick()
         heartbeat_task.tick()
         _handle_uart(uart, wifi, app, ota_data, device, location)
