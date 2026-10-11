@@ -17,6 +17,4 @@ The one big change is that now the barcode scanner needs to support UART/TTL. So
 Additionally, it supports having the wifi connection re-configured by scanning the wifi sharing QR codes, so the box doesn't need to be opened to change basic configuration.
 
 
-KEY="WuBhAUoTo1amIQbE3pquT1kSEZOzQWRl8ghX4Zzh"
-
 curl -H 'content-type: application/json' https://reporter-dev.khanom.xyz/scans/ -d '{"code":"321321321","location":"montreal","scanned_at":"2026-06-21T22:46:49+07"}' -H "X-API-Key: ${KEY}"
