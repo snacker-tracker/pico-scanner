@@ -111,7 +111,7 @@ jobs:
   # via the "prod" environment - configure required reviewers on it under
   # repo Settings > Environments > prod (not settable from this file).
   release:
-    needs: canary
+    needs: [canary, version]
     runs-on: ubuntu-latest
     environment: prod
     permissions:
