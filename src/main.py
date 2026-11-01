@@ -49,6 +49,8 @@ def _build_identity(device, ota_data):
         "app": {
             "name": ota_data.get("github_repo", "unknown"),
             "version": ota_data.get("version", "unknown"),
+            # Same default ota.py uses when picking which releases to track.
+            "channel": ota_data.get("channel", "stable"),
         },
         "platform": {
             "name": sys.implementation.name,
