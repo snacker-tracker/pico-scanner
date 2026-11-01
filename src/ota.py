@@ -1,3 +1,5 @@
+import binascii
+import machine
 import urequests as requests
 import mip
 import log
@@ -5,6 +7,7 @@ import log
 logger = log.getLogger("ota")
 
 DEFAULT_GITHUB_REPO = "snacker-tracker/pico-scanner"
+CHANNELS = ("stable", "canary")
 
 logger.debug("importing OTA")
 
@@ -18,8 +21,56 @@ def _release_url(ota_data, github_repo):
     return api if channel == "canary" else api + "/latest"
 
 
+def _channels_url(github_repo):
+    # Read from master, not a release, so moving a device doesn't need a release.
+    return "https://raw.githubusercontent.com/" + github_repo + "/master/channels.json"
+
+
+def _device_id():
+    return binascii.hexlify(machine.unique_id()).decode()
+
+
+def _sync_channel(ota_data, github_repo):
+    """Adopt the channel channels.json in the repo assigns to this device.
+
+    Devices that aren't listed keep their channel, and so does every device if
+    the file can't be fetched or parsed: a broken file never changes anything.
+    """
+    res = None
+    try:
+        res = requests.get(
+            _channels_url(github_repo), headers={"user-agent": "pico-scanner-ota"}
+        )
+        if res.status_code != 200:
+            logger.warning("OTA channel lookup failed: " + str(res.status_code))
+            return
+        wanted = res.json().get("devices", {}).get(_device_id())
+    except Exception as e:
+        logger.warning("OTA channel lookup error: " + type(e).__name__ + ": " + str(e))
+        return
+    finally:
+        if res is not None:
+            res.close()
+
+    if wanted is None:
+        return
+    if wanted not in CHANNELS:
+        logger.warning("OTA: ignoring unknown channel " + repr(wanted))
+        return
+    current = ota_data.get("channel", "stable")
+    if wanted == current:
+        return
+
+    logger.info("OTA: channel " + current + " -> " + wanted)
+    ota_data["channel"] = wanted
+    import config
+
+    config.save("ota", ota_data)
+
+
 def check_and_apply(ota_data):
     github_repo = ota_data.get("github_repo", DEFAULT_GITHUB_REPO)
+    _sync_channel(ota_data, github_repo)
     res = None
     try:
         url = _release_url(ota_data, github_repo)

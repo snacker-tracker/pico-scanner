@@ -2,6 +2,10 @@ class ResetCalled(Exception):
     pass
 
 
+def unique_id():
+    return b"\xe6\x61\x41\x03\xe7\x57\x4d\x23"
+
+
 def reset():
     raise ResetCalled("machine.reset() called")
 

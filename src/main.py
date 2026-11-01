@@ -147,8 +147,10 @@ def _check_ota(ota_data):
         logger.error("OTA check failed: " + type(e).__name__ + ": " + str(e))
 
 
-def _send_heartbeat(app, ota_data, device, boot_ticks, identity):
+def _send_heartbeat(app, ota_data, device, boot_ticks):
     try:
+        # Built per heartbeat: an OTA check can change ota_data's channel at runtime.
+        identity = _build_identity(device, ota_data)
         # ticks_ms wraps every ~12 days; ticks_diff handles one wrap correctly,
         # so uptime stays accurate as long as reboots happen more often than that.
         uptime_ms = time.ticks_diff(time.ticks_ms(), boot_ticks)
@@ -177,7 +179,6 @@ def run():
     uart = _make_uart(uart_cfg)
     lines = scan_input.LineBuffer()
     boot_ticks = time.ticks_ms()
-    identity = _build_identity(device, ota_data)
 
     wifi_task = Periodic(
         wifi.get("reconnect_interval_seconds", 30) * 1000,
@@ -190,7 +191,7 @@ def run():
     )
     heartbeat_task = Periodic(
         app.get("heartbeat", {}).get("interval_seconds", 300) * 1000,
-        lambda: _send_heartbeat(app, ota_data, device, boot_ticks, identity),
+        lambda: _send_heartbeat(app, ota_data, device, boot_ticks),
         run_immediately=True,
     )
 
