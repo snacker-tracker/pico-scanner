@@ -1,3 +1,4 @@
+import startup  # noqa: F401  (first, so it records the tick count at boot)
 import network
 import machine
 import time

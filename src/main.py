@@ -10,8 +10,10 @@ from machine import Pin, UART
 import config as config_module
 import api
 import qr_config
+import scan_input
 import ota
 import log
+import startup
 
 logger = log.getLogger("main")
 
@@ -25,6 +27,10 @@ _RESET_CAUSE_NAMES = {
 
 
 def _reset_cause_name():
+    # A soft reboot doesn't touch machine.reset_cause(); it keeps reporting
+    # whatever hardware reset came before it.
+    if startup.was_soft_reboot():
+        return "SOFT_RESET"
     reset_cause = getattr(machine, "reset_cause", None)
     if reset_cause is None:
         return "unknown"
@@ -81,24 +87,34 @@ def _make_uart(uart_cfg):
     return uart
 
 
-def _handle_uart(uart, wifi, app, ota_data, device, location):
-    if not uart.any():
+def _handle_uart(uart, lines, wifi, app, ota_data, device, location):
+    now = time.ticks_ms()
+    codes = lines.feed(uart.read(), now) if uart.any() else []
+    leftover = lines.flush_idle(now)
+    if leftover is not None:
+        codes.append(leftover)
+
+    for raw in codes:
+        _handle_code(raw, wifi, app, ota_data, device, location)
+
+
+def _handle_code(raw, wifi, app, ota_data, device, location):
+    try:
+        value = raw.decode("utf-8").strip()
+    except UnicodeError:
+        logger.error("Unreadable scan, not valid UTF-8: " + repr(raw[:40]))
+        return
+    if not value:
         return
 
     try:
-        value = uart.read().decode("utf-8").strip()
-        if not value:
-            return
-
         if qr_config.is_config_qr(value):
             logger.info("Config QR: " + value[:40])
             qr_config.handle(value, wifi, app)
         else:
             logger.info("Scan: " + value)
             scan = api.post_scan(value, location, app, ota_data, device)
-            logger.info(
-                "  -> " + scan.get("id", "?") + " at " + scan.get("scanned_at", "?")
-            )
+            logger.info("  -> event " + str(scan.get("EventId", "?")))
     except Exception as e:
         logger.error("Error: " + type(e).__name__ + ": " + str(e))
 
@@ -157,6 +173,7 @@ def run():
     location = device.get("location", "unknown:unknown:unknown")
 
     uart = _make_uart(uart_cfg)
+    lines = scan_input.LineBuffer()
     boot_ticks = time.ticks_ms()
     identity = _build_identity(device, ota_data)
 
@@ -181,7 +198,7 @@ def run():
         wifi_task.tick()
         ota_task.tick()
         heartbeat_task.tick()
-        _handle_uart(uart, wifi, app, ota_data, device, location)
+        _handle_uart(uart, lines, wifi, app, ota_data, device, location)
         gc.collect()
         time.sleep_ms(100)
 

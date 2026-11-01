@@ -13,7 +13,10 @@ def _user_agent(ota_data, device):
             "/",
             sys.implementation.name,
             "-",
-            ".".join(map(str, list(sys.implementation.version))),
+            # MicroPython's version is (major, minor, micro, prerelease) and
+            # prerelease is "" on release builds; skip it rather than leave a
+            # trailing dot.
+            ".".join(str(part) for part in sys.implementation.version if part != ""),
             "/",
             ota_data.get("github_repo", "unknown"),
             "-",

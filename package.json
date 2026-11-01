@@ -1,5 +1,7 @@
 {
     "urls": [
+        ["startup.py", "github:snacker-tracker/pico-scanner/src/startup.py"],
+        ["scan_input.py", "github:snacker-tracker/pico-scanner/src/scan_input.py"],
         ["main.py", "github:snacker-tracker/pico-scanner/src/main.py"],
         ["boot.py", "github:snacker-tracker/pico-scanner/src/boot.py"],
         ["api.py", "github:snacker-tracker/pico-scanner/src/api.py"],

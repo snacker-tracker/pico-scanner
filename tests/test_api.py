@@ -28,6 +28,24 @@ def test_user_agent_contains_github_repo_and_version():
     assert "rpi-pico-w-01" in ua
 
 
+def test_user_agent_omits_empty_prerelease_from_platform_version(monkeypatch):
+    import sys
+    from api import _user_agent
+
+    monkeypatch.setattr(sys.implementation, "version", (1, 28, 0, ""))
+    ua = _user_agent(OTA_DATA, DEVICE)
+    assert "-1.28.0/" in ua
+
+
+def test_user_agent_keeps_prerelease_in_platform_version(monkeypatch):
+    import sys
+    from api import _user_agent
+
+    monkeypatch.setattr(sys.implementation, "version", (1, 29, 0, "preview"))
+    ua = _user_agent(OTA_DATA, DEVICE)
+    assert "-1.29.0.preview/" in ua
+
+
 def test_user_agent_handles_missing_data():
     from api import _user_agent
 
