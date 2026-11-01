@@ -1,5 +1,6 @@
 {
     "devices": {
-        "e6614103e7574d23": "stable"
+        "e6614103e7574d23": "canary",
+        "e6614c311b334739": "stable"
     }
 }
