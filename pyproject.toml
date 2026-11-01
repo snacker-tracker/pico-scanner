@@ -11,6 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mpy-cross~=1.28.0",
     "pytest-mock",
     "requests",
     "requests-mock",
