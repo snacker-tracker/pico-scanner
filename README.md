@@ -1,5 +1,8 @@
 # Pico-Scanner
 
+[![Maintainability](https://qlty.sh/gh/snacker-tracker/projects/pico-scanner/maintainability.svg)](https://qlty.sh/gh/snacker-tracker/projects/pico-scanner)
+[![Code Coverage](https://qlty.sh/gh/snacker-tracker/projects/pico-scanner/coverage.svg)](https://qlty.sh/gh/snacker-tracker/projects/pico-scanner)
+
 This is a micropython port of the [original scanner code](https://github.com/snacker-tracker/scanner)
 
 It offers the same functionality, but only requires a raspberry-pi pico. Chances are, this could run perfectly well on any ESP devices as well, but this is what I wanted to work with, and I didn't test anything else.

@@ -62,6 +62,11 @@ jobs:
       - name: Run tests
         run: uv run pytest tests/ -v
 
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: reports/lcov.info
+
   # major.minor comes from pyproject.toml (bump it by hand for a real version
   # bump); patch is this workflow run's run_number, so every build gets a
   # unique, ever-increasing version without any manual input.
