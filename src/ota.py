@@ -1,7 +1,6 @@
-import binascii
-import machine
-import urequests as requests
 import mip
+import urequests as requests
+import config
 import log
 
 logger = log.getLogger("ota")
@@ -21,56 +20,8 @@ def _release_url(ota_data, github_repo):
     return api if channel == "canary" else api + "/latest"
 
 
-def _channels_url(github_repo):
-    # Read from master, not a release, so moving a device doesn't need a release.
-    return "https://raw.githubusercontent.com/" + github_repo + "/master/channels.json"
-
-
-def _device_id():
-    return binascii.hexlify(machine.unique_id()).decode()
-
-
-def _sync_channel(ota_data, github_repo):
-    """Adopt the channel channels.json in the repo assigns to this device.
-
-    Devices that aren't listed keep their channel, and so does every device if
-    the file can't be fetched or parsed: a broken file never changes anything.
-    """
-    res = None
-    try:
-        res = requests.get(
-            _channels_url(github_repo), headers={"user-agent": "pico-scanner-ota"}
-        )
-        if res.status_code != 200:
-            logger.warning("OTA channel lookup failed: " + str(res.status_code))
-            return
-        wanted = res.json().get("devices", {}).get(_device_id())
-    except Exception as e:
-        logger.warning("OTA channel lookup error: " + type(e).__name__ + ": " + str(e))
-        return
-    finally:
-        if res is not None:
-            res.close()
-
-    if wanted is None:
-        return
-    if wanted not in CHANNELS:
-        logger.warning("OTA: ignoring unknown channel " + repr(wanted))
-        return
-    current = ota_data.get("channel", "stable")
-    if wanted == current:
-        return
-
-    logger.info("OTA: channel " + current + " -> " + wanted)
-    ota_data["channel"] = wanted
-    import config
-
-    config.save("ota", ota_data)
-
-
 def check_and_apply(ota_data):
     github_repo = ota_data.get("github_repo", DEFAULT_GITHUB_REPO)
-    _sync_channel(ota_data, github_repo)
     res = None
     try:
         url = _release_url(ota_data, github_repo)
@@ -99,18 +50,18 @@ def check_and_apply(ota_data):
         return False
 
     logger.info("OTA: updating " + current_version + " -> " + remote_version)
-    return _apply(remote_version, ota_data, github_repo)
+    return _apply(remote_version, github_repo)
 
 
-def _apply(remote_version, ota_data, github_repo):
+def _apply(remote_version, github_repo):
     try:
         mip.install("github:" + github_repo, version=remote_version, target="/")
 
-        import config
-
-        new_ota_data = dict(ota_data)
-        new_ota_data["version"] = remote_version
-        config.save("ota", new_ota_data)
+        # Write only the local file: the merged view also holds remote overlay
+        # values, which must not be copied into ota.json.
+        local = config.load_local("ota")
+        local["version"] = remote_version
+        config.save("ota", local)
 
         logger.info("OTA: applied " + remote_version)
         return True

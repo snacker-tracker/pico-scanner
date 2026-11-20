@@ -12,6 +12,7 @@ import api
 import qr_config
 import scan_input
 import ota
+import remote
 import log
 import startup
 
@@ -141,7 +142,8 @@ def _ensure_wifi(wifi):
 
 def _check_ota(ota_data):
     try:
-        if ota.check_and_apply(ota_data):
+        # Remote settings are read at boot, so a change to them needs a reset too.
+        if remote.sync() or ota.check_and_apply(ota_data):
             machine.reset()
     except Exception as e:
         logger.error("OTA check failed: " + type(e).__name__ + ": " + str(e))

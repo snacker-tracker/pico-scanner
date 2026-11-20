@@ -11,7 +11,11 @@ Tests run under desktop CPython via `pytest`, with hand-written stubs (`tests/st
 
 Device configuration is split across four files, each with its own load/save pair in `src/config.py`: `wifi.json` (ssid/password, gitignored), `app.json` (backend API url/token + heartbeat interval, gitignored), `device.json` (device name, location, hardware wiring), and `ota.json` (update channel, check interval, installed version, source repo). `wifi.json.template` and `app.json.template` show the expected shape for the two gitignored ones.
 
-OTA updates pull from GitHub Releases on this repo via `mip` (see `src/ota.py`, `package.json`). By default a device tracks the `stable` channel (the newest non-prerelease, non-draft release). Set `"channel": "canary"` in a device's `ota.json` to have it track the very latest release instead, prerelease or not — handy for a canary device you want to validate a build on before promoting it to a full release.
+OTA updates pull from GitHub Releases on this repo via `mip` (see `src/ota.py`, `package.json`). By default a device tracks the `stable` channel (the newest non-prerelease, non-draft release).
+
+Remote settings live in `devices.json` on `master`, keyed by device ID (the hex of `machine.unique_id()`). Each device fetches it on the OTA check interval and keeps only its own entry, in `remote.json` on the device (see `src/remote.py`). Allowed settings are `device.location`, `device.device_name`, `ota.channel` and `ota.check_interval_seconds`; anything else in the entry is ignored. When the overlay changes, the device reboots to apply it. Removing a device's entry reverts it to the values in its local `device.json` and `ota.json`. A failed fetch or malformed file changes nothing.
+
+Set `"channel": "canary"` under `"ota"` in a device's entry to have it track the very latest release instead, prerelease or not, which is handy for validating a build before promoting it.
 
 The one big change is that now the barcode scanner needs to support UART/TTL. Some barcodes will say they support UART/TTL, but what they might mean is that it has a USB-TTL chip on-board, without you being able to access the actual TTL signal from some of the pins.
 
